@@ -1,7 +1,6 @@
-use doc_script::tokenize;
+use doc_script::compile;
 
 fn main() {
-    for token in tokenize("test true 0.3 3 0xAB 0b10") {
-        println!("{:?}", token);
-    }
+    let text = "const i = 3\n";
+    let tokens = compile(text);
 }

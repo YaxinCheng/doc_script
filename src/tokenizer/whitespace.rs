@@ -1,6 +1,6 @@
 use super::Cursor;
 
-pub fn whitespace<'a>(cursor: &mut Cursor<'a>) -> usize {
+pub fn whitespace(cursor: &mut Cursor) -> usize {
     debug_assert!(cursor.first().map(is_whitespace).unwrap_or_default());
     cursor.eat_while(is_whitespace)
 }
@@ -29,8 +29,8 @@ pub fn is_line_terminator(c: char) -> bool {
 mod whitespace_tests {
     use quickcheck_macros::quickcheck;
 
-    use super::Cursor;
     use super::whitespace;
+    use super::Cursor;
 
     #[quickcheck]
     fn test_tokenize_whitespace(mut text: String) -> bool {

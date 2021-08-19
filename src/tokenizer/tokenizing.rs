@@ -31,7 +31,9 @@ impl<'a> Iterator for Tokenizer<'a> {
             Some('=' | '>' | '<' | '!' | '~' | '+' | '-' | '*' | '&' | '|' | '^' | '%') => {
                 self.operator_token()
             }
-            Some('(' | ')' | '{' | '}' | '[' | ']' | ';' | ',' | '.') => self.separator_token(),
+            Some('(' | ')' | '{' | '}' | '[' | ']' | ';' | ',' | '.' | ':') => {
+                self.separator_token()
+            }
             Some(id) if identifier::is_identifier_start(id) => self.identifier_related_token(),
             Some(unexpected) => unreachable!("Unexpected char reached: {}", unexpected),
             None => return None,
@@ -86,7 +88,7 @@ impl<'a> Tokenizer<'a> {
         self.non_literal_token(operator::operator, TokenKind::Operator)
     }
 
-    // separators: "(){}[];,."
+    // separators: "(){}[];,:."
     fn separator_token(&mut self) -> Token<'a> {
         let _ = self.cursor.bump().expect("Checked in match statement");
         let lexeme = self.eat_chars(1);

@@ -8,11 +8,11 @@ mod keyword;
 mod literals;
 mod operator;
 mod token;
-mod tokenizer;
+mod tokenizing;
 mod whitespace;
 
 type Cursor<'a> = cursor::Cursor<std::str::Chars<'a>>;
 
 pub fn tokenize(text: &str) -> impl Iterator<Item = Token> {
-    tokenizer::Tokenizer::tokenize(text)
+    tokenizing::Tokenizer::tokenize(text).filter(Token::should_keep)
 }

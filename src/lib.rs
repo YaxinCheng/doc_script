@@ -1,7 +1,11 @@
-use crate::tokenizer::Token;
+use crate::parser::ParseTree;
 
+mod ast;
+mod parser;
+mod search;
 mod tokenizer;
 
-pub fn tokenize(text: &str) -> impl Iterator<Item = Token> {
-    tokenizer::tokenize(text)
+pub fn compile(text: &str) -> ParseTree {
+    let tokens = tokenizer::tokenize(text);
+    parser::parse(tokens)
 }

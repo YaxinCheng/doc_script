@@ -1,6 +1,6 @@
 use super::LiteralKind;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[cfg_attr(test, derive(Eq, PartialEq))]
 pub struct Token<'a> {
     pub kind: TokenKind,
@@ -16,4 +16,14 @@ pub enum TokenKind {
     Separator,
     Keyword,
     Literal(LiteralKind),
+
+    // Reserved for parser
+    ParsingStart,
+    ParsingEnd,
+}
+
+impl<'a> Token<'a> {
+    pub(in crate::tokenizer) fn should_keep(&self) -> bool {
+        !matches!(self.kind, TokenKind::WhiteSpace | TokenKind::Comment)
+    }
 }
