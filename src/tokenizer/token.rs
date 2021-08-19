@@ -1,9 +1,13 @@
+use super::LiteralKind;
+
+#[derive(Debug)]
+#[cfg_attr(test, derive(Eq, PartialEq))]
 pub struct Token<'a> {
     pub kind: TokenKind,
-    pub lexeme: &'a str
+    pub lexeme: &'a str,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum TokenKind {
     Comment,
     WhiteSpace,
@@ -11,14 +15,5 @@ pub enum TokenKind {
     Operator,
     Separator,
     Keyword,
-    Literal(LiteralKind)
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum LiteralKind {
-    String,
-    Integer,
-    Floating,
-    Boolean,
-    Binary
+    Literal(LiteralKind),
 }

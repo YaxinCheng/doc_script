@@ -9,7 +9,7 @@ pub fn is_identifier_start(c: char) -> bool {
     c.is_alphabetic()
 }
 
-fn is_identifier_continue(c: char) -> bool {
+pub fn is_identifier_continue(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 }
 

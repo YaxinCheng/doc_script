@@ -14,6 +14,7 @@ pub fn is_whitespace(c: char) -> bool {
     ) || is_line_terminator(c)
 }
 
+#[cfg(test)]
 pub const LINE_TERMINATORS: &[char] = &['\u{000A}', '\u{000D}'];
 
 pub fn is_line_terminator(c: char) -> bool {
@@ -26,9 +27,10 @@ pub fn is_line_terminator(c: char) -> bool {
 
 #[cfg(test)]
 mod whitespace_tests {
-    use super::whitespace;
-    use super::Cursor;
     use quickcheck_macros::quickcheck;
+
+    use super::Cursor;
+    use super::whitespace;
 
     #[quickcheck]
     fn test_tokenize_whitespace(mut text: String) -> bool {

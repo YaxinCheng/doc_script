@@ -1,9 +1,18 @@
+pub use literals::LiteralKind;
+pub use token::{Token, TokenKind};
+
 mod comment;
 mod cursor;
-mod token;
-mod whitespace;
 mod identifier;
+mod keyword;
+mod literals;
+mod operator;
+mod token;
+mod tokenizer;
+mod whitespace;
 
 type Cursor<'a> = cursor::Cursor<std::str::Chars<'a>>;
-pub use token::{Token, TokenKind, LiteralKind};
 
+pub fn tokenize(text: &str) -> impl Iterator<Item = Token> {
+    tokenizer::Tokenizer::tokenize(text)
+}

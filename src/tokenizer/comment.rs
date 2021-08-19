@@ -12,10 +12,11 @@ fn has_comment_header(cursor: &Cursor) -> bool {
 
 #[cfg(test)]
 mod comment_test {
+    use quickcheck_macros::quickcheck;
+
     use super::comment;
     use super::Cursor;
     use super::whitespace;
-    use quickcheck_macros::quickcheck;
 
     #[quickcheck]
     fn test_tokenize_comment(mut content: String) -> bool {

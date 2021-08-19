@@ -19,10 +19,6 @@ impl<I> Cursor<I>
         I: Iterator + Clone,
         I::Item: Copy,
 {
-    pub fn prev(&self) -> Option<I::Item> {
-        self.prev.as_ref().copied()
-    }
-
     pub fn first(&self) -> Option<I::Item> {
         self.nth(0)
     }
@@ -50,8 +46,7 @@ impl<'a> Cursor<Chars<'a>> {
 
         while let Some(c) = self.first() {
             if predicate(c) {
-                eaten_length += c.len_utf8();
-                self.bump();
+                eaten_length += self.bump().unwrap().len_utf8();
             } else {
                 break;
             }
@@ -62,8 +57,9 @@ impl<'a> Cursor<Chars<'a>> {
 
 #[cfg(test)]
 mod cursor_tests {
-    use super::Cursor;
     use quickcheck_macros::quickcheck;
+
+    use super::Cursor;
 
     #[quickcheck]
     fn test_eat_while_finish(text: String) -> bool {
