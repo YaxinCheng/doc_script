@@ -45,13 +45,18 @@ pub fn number(cursor: &mut Cursor) -> (usize, LiteralKind) {
         .expect("First digit is checked with debug_assert");
     match (first_digit, cursor.first()) {
         ('.', _) => (1 + integer(cursor), LiteralKind::Floating),
-        ('0', Some('.')) => (1 + floating(cursor), LiteralKind::Floating),
+        ('0', Some('.')) => match cursor.second() {
+            Some('0'..='9') => (1 + floating(cursor), LiteralKind::Floating),
+            _ => (1, LiteralKind::Integer),
+        },
         ('0', None) => (1, LiteralKind::Integer),
         ('0', Some(following)) if !matches!(following, '0'..='9') => (1, LiteralKind::Integer),
         ('1'..='9', _) => {
             let integer_part = 1 + integer(cursor);
-            match cursor.first() {
-                Some('.') => (integer_part + floating(cursor), LiteralKind::Floating),
+            match (cursor.first(), cursor.second()) {
+                (Some('.'), Some('0'..='9')) => {
+                    (integer_part + floating(cursor), LiteralKind::Floating)
+                }
                 _ => (integer_part, LiteralKind::Integer),
             }
         }
@@ -188,5 +193,11 @@ mod number_tests {
     fn test_not_hex() {
         let mut cursor = Cursor::from_iter("0xCANADA".chars());
         assert_eq!(hex(&mut cursor).0, "0xCA".len());
+    }
+
+    #[test]
+    fn test_incomplete_float() {
+        let mut cursor = Cursor::from_iter("3.".chars());
+        assert_eq!(number(&mut cursor).0, "3".len())
     }
 }

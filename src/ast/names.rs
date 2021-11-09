@@ -31,7 +31,7 @@ impl<'a> From<Node<'a>> for Name<'a> {
                 let mut names = BreadthFirst::find_from(
                     children,
                     |node| node.is_leaf(),
-                    |node| node.children_owned().unwrap_or_default(),
+                    |node| node.children().unwrap_or_default(),
                 )
                 .filter_map(|node| match node.token()? {
                     Token {

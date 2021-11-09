@@ -18,7 +18,7 @@ macro_rules! check_unpack {
     ($source: expr, $kind: pat) => {{
         crate::ast::debug_check!($source, Node::Internal { kind: $kind, .. });
         $source
-            .children_owned()
+            .children()
             .expect("Internal nodes always have children")
     }};
 }

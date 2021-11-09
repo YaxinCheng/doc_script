@@ -1,5 +1,4 @@
 use super::check_unpack;
-use super::Expression;
 use super::Import;
 use super::{Node, NodeKind};
 use crate::ast::Statement;
@@ -15,8 +14,8 @@ impl<'a> From<Node<'a>> for CompilationUnit<'a> {
         let children = check_unpack!(node, NodeKind::CompilationUnit);
         let declarations = BreadthFirst::find_from(
             children,
-            |node| matches!(node.kind(), Some(NodeKind::Declaration)),
-            |node| node.children_owned().unwrap_or_default(),
+            |node| matches!(node.kind(), Some(NodeKind::DeclarationStatement)),
+            |node| node.children().unwrap_or_default(),
         )
         .map(Declaration::from)
         .collect();
@@ -27,7 +26,7 @@ impl<'a> From<Node<'a>> for CompilationUnit<'a> {
 #[cfg_attr(test, derive(Debug, Eq, PartialEq))]
 pub enum Declaration<'a> {
     Import(Import<'a>),
-    Constant(Expression<'a>),
+    Constant(Statement<'a>),
 }
 
 impl<'a> From<Node<'a>> for Declaration<'a> {
@@ -47,11 +46,10 @@ impl<'a> From<Node<'a>> for Declaration<'a> {
             } => children
                 .pop()
                 .map(Statement::from)
-                .map(Expression::from)
                 .map(Declaration::Constant)
                 .expect("ConstantDeclaration should have one child"),
             Node::Internal {
-                kind: NodeKind::Declaration,
+                kind: NodeKind::DeclarationStatement,
                 mut children,
             } => children
                 .pop()

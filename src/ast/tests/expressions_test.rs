@@ -1,61 +1,32 @@
 use super::super::{Expression, Name, Parameter};
 use super::*;
-
-#[test]
-fn test_constant_declaration() {
-    let parse_tree = parse(tokenize(r#"const value = "String";"#));
-    let node = DepthFirst::find(
-        parse_tree.root,
-        |node| matches!(node.kind(), Some(NodeKind::ConstantDeclarationExpression)),
-        |node| node.children_owned().unwrap_or_default(),
-    )
-    .next()
-    .expect("Couldn't find ConstantDeclarationExpression node");
-    let expression = Expression::from(node);
-    assert!(matches!(
-        expression,
-        Expression::Constant { name: "value", .. }
-    ));
-    match expression {
-        Expression::Constant { name, data } => {
-            assert_eq!(name, "value");
-            assert!(matches!(
-                *data,
-                Expression::Literal {
-                    kind: LiteralKind::String,
-                    lexeme: r#""String""#
-                }
-            ));
-        }
-        expression => panic!("Unexpected expression: {:?}", expression),
-    }
-}
+use crate::search::BreadthFirst;
 
 #[test]
 fn test_struct_init_simple() {
-    test_struct_init_basic(r#"const view = View();"#, vec![], vec![])
+    test_struct_init_basic("const view = View()\n", vec![], vec![])
 }
 
 #[test]
 fn test_struct_init_empty_body() {
-    test_struct_init_basic(r#"const view = View() { };"#, vec![], vec![])
+    test_struct_init_basic("const view = View() { }\n", vec![], vec![])
 }
 
 #[test]
 fn test_struct_init_eliminate_parameters() {
-    test_struct_init_basic(r#"const view = View { };"#, vec![], vec![])
+    test_struct_init_basic("const view = View { }\n", vec![], vec![])
 }
 
 #[test]
 #[should_panic]
 fn test_struct_init_just_name() {
-    test_struct_init_basic(r#"const view = View;"#, vec![], vec![])
+    test_struct_init_basic("const view = View\n", vec![], vec![])
 }
 
 #[test]
 fn test_struct_with_single_parameter() {
     test_struct_init_basic(
-        r#"const view = View(3);"#,
+        "const view = View(3)\n",
         vec![Parameter::Plain(Expression::Literal {
             kind: LiteralKind::Integer,
             lexeme: "3",
@@ -67,7 +38,7 @@ fn test_struct_with_single_parameter() {
 #[test]
 fn test_struct_with_multiple_parameter() {
     test_struct_init_basic(
-        r#"const view = View(3, "string", 3.14, false);"#,
+        "const view = View(3, \"string\", 3.14, false)\n",
         vec![
             Parameter::Plain(Expression::Literal {
                 kind: LiteralKind::Integer,
@@ -93,7 +64,7 @@ fn test_struct_with_multiple_parameter() {
 #[test]
 fn test_struct_init_with_labelled_parameter() {
     test_struct_init_basic(
-        r#"const view = View(background_colour: "red", width:30, );"#,
+        "const view = View(background_colour: \"red\", width:30, )\n",
         vec![
             Parameter::Labelled {
                 label: "background_colour",
@@ -117,7 +88,7 @@ fn test_struct_init_with_labelled_parameter() {
 #[test]
 fn test_struct_init_mixed_parameter_types() {
     test_struct_init_basic(
-        r#"const view = View("red", width: 30);"#,
+        "const view = View(\"red\", width: 30)\n",
         vec![
             Parameter::Plain(Expression::Literal {
                 kind: LiteralKind::String,
@@ -138,21 +109,19 @@ fn test_struct_init_mixed_parameter_types() {
 #[test]
 fn test_struct_init_with_body() {
     test_struct_init_basic(
-        r#"const view = View { Text("label"), View(), };"#,
+        "const view = View { Text(\"label\")\n View()\n }\n",
         vec![],
         vec![
-            Expression::StructInit {
+            Expression::MethodInvocation {
                 name: Name::Simple("Text"),
                 parameters: vec![Parameter::Plain(Expression::Literal {
                     kind: LiteralKind::String,
                     lexeme: "\"label\"",
                 })],
-                body: vec![],
             },
-            Expression::StructInit {
+            Expression::MethodInvocation {
                 name: Name::Simple("View"),
                 parameters: vec![],
-                body: vec![],
             },
         ],
     );
@@ -161,27 +130,25 @@ fn test_struct_init_with_body() {
 #[test]
 fn test_struct_init_nested_body() {
     test_struct_init_basic(
-        r#"const view = View { Text("label"), View() { Text("nested"), } };"#,
+        "const view = View { Text(\"label\")\n View() { Text(\"nested\") }\n}\n",
         vec![],
         vec![
-            Expression::StructInit {
+            Expression::MethodInvocation {
                 name: Name::Simple("Text"),
                 parameters: vec![Parameter::Plain(Expression::Literal {
                     kind: LiteralKind::String,
                     lexeme: "\"label\"",
                 })],
-                body: vec![],
             },
             Expression::StructInit {
                 name: Name::Simple("View"),
                 parameters: vec![],
-                body: vec![Expression::StructInit {
+                body: vec![Expression::MethodInvocation {
                     name: Name::Simple("Text"),
                     parameters: vec![Parameter::Plain(Expression::Literal {
                         kind: LiteralKind::String,
                         lexeme: "\"nested\"",
                     })],
-                    body: vec![],
                 }],
             },
         ],
@@ -196,11 +163,16 @@ fn test_struct_init_basic(
     let parse_tree = parse(tokenize(statement));
     let node = DepthFirst::find(
         parse_tree.root,
-        |node| matches!(node.kind(), Some(NodeKind::StructInitExpression)),
-        |node| node.children_owned().unwrap_or_default(),
+        |node| {
+            matches!(
+                node.kind(),
+                Some(NodeKind::StructInitExpression | NodeKind::MethodInvocation)
+            )
+        },
+        |node| node.children().unwrap_or_default(),
     )
     .next()
-    .expect("Cannot find StructInitExpression");
+    .expect("Cannot find StructInitExpression or MethodInvocation");
     let expression = Expression::from(node);
     match expression {
         Expression::StructInit {
@@ -212,6 +184,57 @@ fn test_struct_init_basic(
             assert_eq!(parameters, expected_parameters);
             assert_eq!(body, expected_body);
         }
+        Expression::MethodInvocation { name, parameters } => {
+            assert_eq!(name, Name::Simple("View"));
+            assert_eq!(parameters, expected_parameters);
+        }
         expression => panic!("Unexpected expression: {:?}", expression),
     }
+}
+
+#[test]
+fn test_method_invocation_one_line() {
+    test_method_invocation("const depth = 3.pow(2).abs()\n")
+}
+
+#[test]
+fn test_chaining_method_invocation_multi_lines() {
+    test_method_invocation(
+        r#"const depth = 3
+    .pow(
+    2
+    )
+        .abs()
+    "#,
+    )
+}
+
+fn test_method_invocation(statement: &str) {
+    let node = parse(tokenize(statement)).root;
+    let expression = BreadthFirst::find(
+        node,
+        |node| matches!(node.kind(), Some(NodeKind::Expression)),
+        |node| node.children().unwrap_or_default(),
+    )
+    .next()
+    .map(Expression::from)
+    .expect("Cannot find Expression node");
+    assert_eq!(
+        expression,
+        Expression::ChainingMethodInvocation {
+            receiver: Box::new(Expression::ChainingMethodInvocation {
+                receiver: Box::new(Expression::Literal {
+                    kind: LiteralKind::Integer,
+                    lexeme: "3",
+                }),
+                name: "pow",
+                parameters: vec![Parameter::Plain(Expression::Literal {
+                    kind: LiteralKind::Integer,
+                    lexeme: "2",
+                })],
+            }),
+            name: "abs",
+            parameters: vec![],
+        }
+    )
 }

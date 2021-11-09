@@ -19,17 +19,17 @@ impl<'a> From<Node<'a>> for Import<'a> {
     fn from(node: Node<'a>) -> Self {
         match node {
             Node::Internal {
-                kind: NodeKind::SingleImportDeclaration,
+                kind: NodeKind::SingleImportDeclarationStatement,
                 mut children,
             } => Import::Single(Name::from(
                 children.pop().expect("Import should have one child"),
             )),
             Node::Internal {
-                kind: NodeKind::WildcardImportDeclaration,
+                kind: NodeKind::WildcardImportDeclarationStatement,
                 mut children,
             } => Import::Wildcard(Name::from(children.swap_remove(1))),
             Node::Internal {
-                kind: NodeKind::MultipleImportDeclaration,
+                kind: NodeKind::MultipleImportDeclarationStatement,
                 mut children,
             } => {
                 let _close_brackets = children.pop();
@@ -43,7 +43,7 @@ impl<'a> From<Node<'a>> for Import<'a> {
                 let suffices = BreadthFirst::find(
                     suffices,
                     |node| matches!(node.kind(), Some(NodeKind::Name)),
-                    |node| node.children_owned().unwrap_or_default(),
+                    |node| node.children().unwrap_or_default(),
                 )
                 .map(Name::from)
                 .collect();

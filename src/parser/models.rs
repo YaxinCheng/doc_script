@@ -12,14 +12,6 @@ pub enum Node<'a> {
 }
 
 impl<'a> Node<'a> {
-    #[cfg(test)]
-    pub fn children(&self) -> &[Node<'a>] {
-        match self {
-            Node::Leaf(_) => &[],
-            Node::Internal { kind: _, children } => children,
-        }
-    }
-
     pub fn token(&self) -> Option<Token<'a>> {
         match self {
             Node::Leaf(token) => Some(*token),
@@ -38,7 +30,7 @@ impl<'a> Node<'a> {
         matches!(self, Node::Leaf(_))
     }
 
-    pub fn children_owned(self) -> Option<Vec<Node<'a>>> {
+    pub fn children(self) -> Option<Vec<Node<'a>>> {
         match self {
             Node::Internal { kind: _, children } => Some(children),
             _ => None,

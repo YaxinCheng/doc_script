@@ -52,7 +52,7 @@ mod parse_tests {
 
     #[test]
     fn test_const_declaration() {
-        let text = "const i = 3;";
+        let text = "const i = 3\n";
         let parse_tree = super::parse(tokenize(text));
         let actual = first_child(&parse_tree.root, 3)
             .and_then(Node::kind)
@@ -63,7 +63,7 @@ mod parse_tests {
 
     #[test]
     fn test_empty_struct_init() {
-        let text = "const s = View(size: 5) { };";
+        let text = "const s = View(size: 5) { }\n";
         let parse_tree = super::parse(tokenize(text));
         let expected = NodeKind::ConstantDeclaration;
         let actual = first_child(&parse_tree.root, 3)
@@ -74,7 +74,7 @@ mod parse_tests {
 
     #[test]
     fn test_struct_init_with_content() {
-        let text = r#"const s = View(size: 5) { Text("abc") };"#;
+        let text = "const s = View(size: 5) { Text(\"abc\") }\n";
         let parse_tree = super::parse(tokenize(text));
         let expected = NodeKind::ConstantDeclaration;
         let actual = first_child(&parse_tree.root, 3)
@@ -85,7 +85,7 @@ mod parse_tests {
 
     #[test]
     fn test_struct_init_with_multiple_content() {
-        let text = r#"const s = View(size: 5) { Text("abc"), Text(content: "another") };"#;
+        let text = "const s = View(size: 5) { Text(\"abc\")\n Text(content: \"another\")\n }\n";
         let parse_tree = super::parse(tokenize(text));
         let expected = NodeKind::ConstantDeclaration;
         let actual = first_child(&parse_tree.root, 3)
@@ -101,7 +101,10 @@ mod parse_tests {
     fn first_child<'a, 'tree>(node: &'tree Node<'a>, levels: usize) -> Option<&'tree Node<'a>> {
         let mut node = node;
         for _ in 0..levels {
-            node = node.children().first()?;
+            node = match node {
+                Node::Internal { kind: _, children } => children.first()?,
+                _ => None?,
+            };
         }
         Some(node)
     }

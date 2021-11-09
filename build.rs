@@ -212,8 +212,7 @@ fn write_production_rules<'a>(
 
 fn terminals_to_token_kind(s: &str) -> Option<&str> {
     let kind = match s {
-        "Identifier" | "ParsingStart" | "ParsingEnd" => s,
-        "EOL" => "WhiteSpace",
+        "Identifier" | "ParsingStart" | "ParsingEnd" | "NewLine" => s,
         "IntegerLiteral" => "Literal(LiteralKind::Integer)",
         "FloatingLiteral" => "Literal(LiteralKind::Floating)",
         "BooleanLiteral" => "Literal(LiteralKind::Boolean)",
@@ -373,7 +372,7 @@ fn should_ignore_lexeme(symbol: &str) -> bool {
             | "StringLiteral"
             | "BinaryLiteral"
             | "HexLiteral"
-            | "EOL"
+            | "NewLine"
             | "ParsingStart"
             | "ParsingEnd"
     )

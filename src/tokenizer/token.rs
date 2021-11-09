@@ -11,6 +11,7 @@ pub struct Token<'a> {
 pub enum TokenKind {
     Comment,
     WhiteSpace,
+    NewLine,
     Identifier,
     Operator,
     Separator,
