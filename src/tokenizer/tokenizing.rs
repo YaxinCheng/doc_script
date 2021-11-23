@@ -189,10 +189,15 @@ impl<'a> Tokenizer<'a> {
     fn last_token_suppresses_newline(&self) -> bool {
         matches!(
             self.last_token,
-            Some(Token {
-                kind: TokenKind::Separator,
-                lexeme: "{" | ","
-            })
+            Some(
+                Token {
+                    kind: TokenKind::Separator,
+                    lexeme: "{" | "," | "." | ";"
+                } | Token {
+                    kind: TokenKind::Operator,
+                    lexeme: "="
+                }
+            )
         )
     }
 }

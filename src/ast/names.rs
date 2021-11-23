@@ -4,7 +4,8 @@ use crate::search::BreadthFirst;
 #[cfg(debug_assertions)]
 use crate::tokenizer::{Token, TokenKind};
 
-#[cfg_attr(test, derive(Debug, PartialEq, Eq))]
+#[cfg_attr(test, derive(Debug))]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub enum Name<'a> {
     Simple(&'a str),
     Qualified(Vec<&'a str>),

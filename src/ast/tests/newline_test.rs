@@ -1,6 +1,7 @@
 use super::*;
-use crate::ast::{Expression, Import, Name};
+use crate::ast::{ConstantDeclaration, Expression, Import, Name, Statement};
 use crate::parser::Node;
+use crate::search::BreadthFirst;
 
 #[test]
 fn test_struct_content_newline_normal() {
@@ -54,8 +55,9 @@ fn test_struct_without_newline() {
 
 fn test_struct_init(text: &str) {
     let parse_tree = parse(tokenize(text));
-    let expression = depth_first_find(parse_tree.root, NodeKind::Expression)
+    let expression = breadth_first_find(parse_tree.root, NodeKind::Expression)
         .map(Expression::from)
+        .next()
         .expect("Failed to find expression");
     let expected = Expression::StructInit {
         name: Name::Simple("Test"),
@@ -116,11 +118,12 @@ fn test_import_statement_with_comma_newline() {
 
 fn test_import_statement(text: &str) {
     let parse_tree = parse(tokenize(text));
-    let import = depth_first_find(
+    let import = breadth_first_find(
         parse_tree.root,
         NodeKind::MultipleImportDeclarationStatement,
     )
     .map(Import::from)
+    .next()
     .expect("Failed to find import");
     let expected = Import::Multiple {
         prefix: Name::Qualified(vec!["test", "import"]),
@@ -129,11 +132,57 @@ fn test_import_statement(text: &str) {
     assert_eq!(import, expected)
 }
 
-fn depth_first_find(start_node: Node, node_kind: NodeKind) -> Option<Node> {
-    DepthFirst::find(
+#[test]
+fn test_semicolon_and_new_line_constants() {
+    test_constants_separated(
+        "
+    const first = 1;
+
+    const second = 2;
+    ",
+    )
+}
+
+#[test]
+fn test_equal_sign_suppress_newline() {
+    test_constants_separated(
+        "
+    const first = 
+        1
+    const second = 2
+    ",
+    )
+}
+
+fn test_constants_separated(program: &str) {
+    let parse_tree = parse(tokenize(program));
+    let imports: Vec<_> =
+        breadth_first_find(parse_tree.root, NodeKind::ConstantDeclarationStatement)
+            .map(Statement::from)
+            .collect();
+    let expected = vec![
+        Statement::ConstantDeclaration(ConstantDeclaration {
+            name: "first",
+            value: Expression::Literal {
+                kind: LiteralKind::Integer,
+                lexeme: "1",
+            },
+        }),
+        Statement::ConstantDeclaration(ConstantDeclaration {
+            name: "second",
+            value: Expression::Literal {
+                kind: LiteralKind::Integer,
+                lexeme: "2",
+            },
+        }),
+    ];
+    assert_eq!(imports, expected)
+}
+
+fn breadth_first_find(start_node: Node, node_kind: NodeKind) -> impl Iterator<Item = Node> {
+    BreadthFirst::find(
         start_node,
-        |node| node.kind() == Some(node_kind),
+        move |node| node.kind() == Some(node_kind),
         |node| node.children().unwrap_or_default(),
     )
-    .next()
 }

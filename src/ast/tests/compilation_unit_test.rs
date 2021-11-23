@@ -2,7 +2,7 @@ use super::super::abstract_tree;
 use super::super::CompilationUnit;
 use super::*;
 use crate::ast::Expression::{ChainingMethodInvocation, MethodInvocation, StructInit};
-use crate::ast::{Declaration, Expression, Name, Parameter, Statement};
+use crate::ast::{ConstantDeclaration, Declaration, Expression, Name, Parameter, Statement};
 use crate::tokenizer::LiteralKind::Integer;
 
 #[test]
@@ -11,7 +11,7 @@ fn test_general_compilation() {
 const main = View {
     Text("title")
     View {
-        Text("body") ; Image("lake")
+        Text("body") ; Image(source: canada.lake)
     }
     .width(300)
 }
@@ -21,7 +21,7 @@ const main = View {
     debug_assert_eq!(
         ast.compilation_unit,
         CompilationUnit {
-            declarations: vec![Declaration::Constant(Statement::ConstantDeclaration {
+            declarations: vec![Declaration::Constant(ConstantDeclaration {
                 name: "main",
                 value: Expression::StructInit {
                     name: Name::Simple("View"),
@@ -48,14 +48,16 @@ const main = View {
                                     },
                                     MethodInvocation {
                                         name: Name::Simple("Image"),
-                                        parameters: vec![Parameter::Plain(Expression::Literal {
-                                            kind: LiteralKind::String,
-                                            lexeme: r#""lake""#
-                                        })]
+                                        parameters: vec![Parameter::Labelled {
+                                            label: "source",
+                                            content: Expression::ConstUse(Name::Qualified(vec![
+                                                "canada", "lake"
+                                            ]))
+                                        }]
                                     }
                                 ]
                             }),
-                            name: "width",
+                            name: Name::Simple("width"),
                             parameters: vec![Parameter::Plain(Expression::Literal {
                                 kind: Integer,
                                 lexeme: "300"

@@ -57,7 +57,7 @@ mod parse_tests {
         let actual = first_child(&parse_tree.root, 3)
             .and_then(Node::kind)
             .expect("None obtained");
-        let expected = NodeKind::ConstantDeclaration;
+        let expected = NodeKind::ConstantDeclarationStatement;
         assert_eq!(actual, expected);
     }
 
@@ -65,7 +65,7 @@ mod parse_tests {
     fn test_empty_struct_init() {
         let text = "const s = View(size: 5) { }\n";
         let parse_tree = super::parse(tokenize(text));
-        let expected = NodeKind::ConstantDeclaration;
+        let expected = NodeKind::ConstantDeclarationStatement;
         let actual = first_child(&parse_tree.root, 3)
             .and_then(Node::kind)
             .expect("None obtained");
@@ -76,7 +76,7 @@ mod parse_tests {
     fn test_struct_init_with_content() {
         let text = "const s = View(size: 5) { Text(\"abc\") }\n";
         let parse_tree = super::parse(tokenize(text));
-        let expected = NodeKind::ConstantDeclaration;
+        let expected = NodeKind::ConstantDeclarationStatement;
         let actual = first_child(&parse_tree.root, 3)
             .and_then(Node::kind)
             .expect("None obtained");
@@ -87,7 +87,7 @@ mod parse_tests {
     fn test_struct_init_with_multiple_content() {
         let text = "const s = View(size: 5) { Text(\"abc\")\n Text(content: \"another\")\n }\n";
         let parse_tree = super::parse(tokenize(text));
-        let expected = NodeKind::ConstantDeclaration;
+        let expected = NodeKind::ConstantDeclarationStatement;
         let actual = first_child(&parse_tree.root, 3)
             .and_then(Node::kind)
             .expect("None obtained");

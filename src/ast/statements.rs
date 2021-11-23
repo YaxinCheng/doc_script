@@ -1,16 +1,13 @@
 use super::debug_check;
 use super::Expression;
 use super::{Node, NodeKind};
-#[cfg(debug_assertions)]
-use crate::tokenizer::{Token, TokenKind};
+use crate::ast::declarations::{ConstantDeclaration, StructDeclaration};
 
 #[cfg_attr(test, derive(Debug, Eq, PartialEq))]
 pub enum Statement<'a> {
     Expression(Expression<'a>),
-    ConstantDeclaration {
-        name: &'a str,
-        value: Expression<'a>,
-    },
+    ConstantDeclaration(ConstantDeclaration<'a>),
+    StructDeclaration(StructDeclaration<'a>),
 }
 
 impl<'a> From<Node<'a>> for Statement<'a> {
@@ -18,44 +15,45 @@ impl<'a> From<Node<'a>> for Statement<'a> {
         match node {
             Node::Internal {
                 kind: NodeKind::ExpressionStatement,
-                mut children,
-            } => {
-                let _end_of_line = children.pop();
-                debug_check! { _end_of_line, Some(Node::Leaf(
-                Token { kind: TokenKind::Separator, lexeme: ";" }
-                    | Token { kind: TokenKind::NewLine, lexeme: _ })) };
-                let expression = children
-                    .pop()
-                    .map(Expression::from)
-                    .expect("Expect Expression");
-                Statement::Expression(expression)
-            }
+                children,
+            } => Self::expression_statement(children),
             Node::Internal {
                 kind: NodeKind::ConstantDeclarationStatement,
-                mut children,
-            } => {
-                let _end_of_line = children.pop();
-                debug_check! { _end_of_line, Some(Node::Internal { kind: NodeKind::EOL, .. }) }
-                let value = children
-                    .pop()
-                    .map(Expression::from)
-                    .expect("Expect Expression");
-                let _equal_sign = children.pop();
-                debug_check! { _equal_sign, Some(Node::Leaf( Token { kind: TokenKind::Operator, lexeme: "=" })) };
-                let name = children
-                    .pop()
-                    .and_then(|leaf| leaf.token())
-                    .map(|token| match token {
-                        Token {
-                            kind: TokenKind::Identifier,
-                            lexeme,
-                        } => lexeme,
-                        token => unreachable!("Unexpected token: {:?}", token),
-                    })
-                    .expect("Failed to find name for constant");
-                Statement::ConstantDeclaration { name, value }
-            }
+                children,
+            } => Self::constant_declaration(children),
+            Node::Internal {
+                kind: NodeKind::StructDeclarationStatement,
+                children,
+            } => Self::struct_declaration(children),
             node => unreachable!("Unexpected node reached: {:?}", node),
         }
+    }
+}
+
+impl<'a> Statement<'a> {
+    fn expression_statement(mut children: Vec<Node<'a>>) -> Statement<'a> {
+        let _end_of_line = children.pop();
+        debug_check! { _end_of_line, Some(Node::Internal { kind: NodeKind::EOL, .. }) }
+        let expression = children
+            .pop()
+            .map(Expression::from)
+            .expect("Expect Expression");
+        Statement::Expression(expression)
+    }
+
+    fn constant_declaration(mut children: Vec<Node<'a>>) -> Statement<'a> {
+        children
+            .pop()
+            .map(ConstantDeclaration::from)
+            .map(Statement::ConstantDeclaration)
+            .expect("Expect ConstantDeclaration")
+    }
+
+    fn struct_declaration(mut children: Vec<Node<'a>>) -> Statement<'a> {
+        children
+            .pop()
+            .map(StructDeclaration::from)
+            .map(Statement::StructDeclaration)
+            .expect("Expect StructDeclaration")
     }
 }

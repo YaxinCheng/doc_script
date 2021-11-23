@@ -1,6 +1,7 @@
 use doc_script::compile;
 
 fn main() {
-    let text = "const i = 3\n";
-    let tokens = compile(text);
+    let args = std::env::args();
+    let compiled = compile(args.skip(1).collect());
+    println!("{}", compiled)
 }

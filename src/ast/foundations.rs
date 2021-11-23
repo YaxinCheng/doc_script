@@ -1,7 +1,7 @@
 use super::check_unpack;
 use super::Import;
 use super::{Node, NodeKind};
-use crate::ast::Statement;
+use crate::ast::{ConstantDeclaration, StructDeclaration};
 use crate::search::BreadthFirst;
 
 #[cfg_attr(test, derive(Debug, PartialEq, Eq))]
@@ -26,7 +26,8 @@ impl<'a> From<Node<'a>> for CompilationUnit<'a> {
 #[cfg_attr(test, derive(Debug, Eq, PartialEq))]
 pub enum Declaration<'a> {
     Import(Import<'a>),
-    Constant(Statement<'a>),
+    Constant(ConstantDeclaration<'a>),
+    Struct(StructDeclaration<'a>),
 }
 
 impl<'a> From<Node<'a>> for Declaration<'a> {
@@ -41,13 +42,21 @@ impl<'a> From<Node<'a>> for Declaration<'a> {
                 .map(Declaration::Import)
                 .expect("ImportDeclaration should have one child"),
             Node::Internal {
-                kind: NodeKind::ConstantDeclaration,
+                kind: NodeKind::ConstantDeclarationStatement,
                 mut children,
             } => children
                 .pop()
-                .map(Statement::from)
+                .map(ConstantDeclaration::from)
                 .map(Declaration::Constant)
                 .expect("ConstantDeclaration should have one child"),
+            Node::Internal {
+                kind: NodeKind::StructDeclarationStatement,
+                mut children,
+            } => children
+                .pop()
+                .map(StructDeclaration::from)
+                .map(Declaration::Struct)
+                .expect("StructDeclaration should have one child"),
             Node::Internal {
                 kind: NodeKind::DeclarationStatement,
                 mut children,

@@ -1,4 +1,6 @@
+mod declarations;
 mod expressions;
+mod field;
 mod foundations;
 mod import;
 mod names;
@@ -8,7 +10,9 @@ mod tests;
 
 use crate::parser::{Node, NodeKind};
 
+pub use declarations::*;
 pub use expressions::*;
+pub use field::*;
 pub use foundations::*;
 pub use import::*;
 pub use names::*;

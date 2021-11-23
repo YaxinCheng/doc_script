@@ -210,15 +210,7 @@ fn test_chaining_method_invocation_multi_lines() {
 }
 
 fn test_method_invocation(statement: &str) {
-    let node = parse(tokenize(statement)).root;
-    let expression = BreadthFirst::find(
-        node,
-        |node| matches!(node.kind(), Some(NodeKind::Expression)),
-        |node| node.children().unwrap_or_default(),
-    )
-    .next()
-    .map(Expression::from)
-    .expect("Cannot find Expression node");
+    let expression = find_first_expression(statement).expect("Cannot find Expression node");
     assert_eq!(
         expression,
         Expression::ChainingMethodInvocation {
@@ -227,14 +219,41 @@ fn test_method_invocation(statement: &str) {
                     kind: LiteralKind::Integer,
                     lexeme: "3",
                 }),
-                name: "pow",
+                name: Name::Simple("pow"),
                 parameters: vec![Parameter::Plain(Expression::Literal {
                     kind: LiteralKind::Integer,
                     lexeme: "2",
                 })],
             }),
-            name: "abs",
+            name: Name::Simple("abs"),
             parameters: vec![],
         }
     )
+}
+
+#[test]
+fn test_const_use_qualified() {
+    let program = "const text = book.content\n";
+    let expression = find_first_expression(program).expect("Expression expected");
+    let expected = Expression::ConstUse(Name::Qualified(vec!["book", "content"]));
+    assert_eq!(expression, expected)
+}
+
+#[test]
+fn test_const_use_simple() {
+    let program = "const text = book\n";
+    let expression = find_first_expression(program).expect("Expression expected");
+    let expected = Expression::ConstUse(Name::Simple("book"));
+    assert_eq!(expression, expected)
+}
+
+fn find_first_expression(program: &str) -> Option<Expression> {
+    let parse_tree = parse(tokenize(program));
+    BreadthFirst::find(
+        parse_tree.root,
+        |node| matches!(node.kind(), Some(NodeKind::Expression)),
+        |node| node.children().unwrap_or_default(),
+    )
+    .next()
+    .map(Expression::from)
 }

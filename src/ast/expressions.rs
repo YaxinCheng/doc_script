@@ -22,9 +22,10 @@ pub enum Expression<'a> {
     },
     ChainingMethodInvocation {
         receiver: Box<Expression<'a>>,
-        name: &'a str,
+        name: Name<'a>,
         parameters: Vec<Parameter<'a>>,
     },
+    ConstUse(Name<'a>),
 }
 
 impl<'a> From<Node<'a>> for Expression<'a> {
@@ -35,12 +36,9 @@ impl<'a> From<Node<'a>> for Expression<'a> {
             Some(NodeKind::StructInitExpression) => Self::struct_init(node),
             Some(NodeKind::MethodInvocation) => Self::method_invocation(node),
             Some(NodeKind::ChainingMethodInvocation) => Self::chaining_method_invocation(node),
-            Some(NodeKind::Expression) => {
-                let child = node
-                    .children()
-                    .and_then(|mut children| children.pop())
-                    .expect("Expression should have one child");
-                Expression::from(child)
+            Some(NodeKind::ConstantUse) => Self::const_use(node),
+            Some(NodeKind::Expression | NodeKind::ChainableExpression) => {
+                Self::expression_recursive(node)
             }
             None => unreachable!("Unexpected leaf node reached: {:?}", node),
             Some(kind) => unreachable!("Unexpected kind reached: {:?}", kind),
@@ -49,6 +47,19 @@ impl<'a> From<Node<'a>> for Expression<'a> {
 }
 
 impl<'a> Expression<'a> {
+    fn expression_recursive(node: Node<'a>) -> Expression<'a> {
+        let mut children = node
+            .children()
+            .expect("Expression node should have children");
+        let child = children.pop().expect("One child expected");
+        match child {
+            Node::Internal { .. } => Expression::from(child),
+            Node::Leaf(_) => {
+                Expression::from(children.pop().expect("Bracketed expression expected"))
+            }
+        }
+    }
+
     fn block(node: Node<'a>) -> Expression<'a> {
         let mut children = check_unpack!(node, NodeKind::Block);
         let _close_bracket = children.pop();
@@ -87,6 +98,12 @@ impl<'a> Expression<'a> {
         }
     }
 
+    fn const_use(node: Node<'a>) -> Expression<'a> {
+        let mut children = check_unpack!(node, NodeKind::ConstantUse);
+        let name = children.pop().map(Name::from).expect("Name expected");
+        Expression::ConstUse(name)
+    }
+
     fn struct_init(node: Node<'a>) -> Expression<'a> {
         let mut children = check_unpack!(node, NodeKind::StructInitExpression);
         let body = Self::eat_struct_body_init(&mut children);
@@ -111,8 +128,7 @@ impl<'a> Expression<'a> {
         let parameters = Self::eat_parameters(&mut children);
         let name = children
             .pop()
-            .and_then(|node| node.token())
-            .map(|token| token.lexeme)
+            .map(Name::from)
             .expect("Method name is missing");
         let _dot = children.pop();
         debug_check! { _dot, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "." })) };

@@ -1,5 +1,8 @@
 use super::Cursor;
 use super::LiteralKind;
+use crate::tokenizer::whitespace::{
+    is_line_terminator_start, is_whitespace, whitespace_and_newline,
+};
 
 fn is_string_header(cursor: &Cursor) -> bool {
     match cursor.first() {
@@ -63,12 +66,15 @@ fn raw_string(cursor: &mut Cursor) -> usize {
 fn eat_escaped_char(cursor: &mut Cursor) -> usize {
     debug_assert_eq!(cursor.first(), Some('\\'));
     let backslash = cursor.bump().unwrap().len_utf8();
-    let leading_char = cursor.bump().expect("No character after backslash");
-    backslash
-        + match leading_char {
-            'b' | 't' | 'n' | 'f' | 'r' | '"' | '\'' | '\\' => leading_char.len_utf8(),
-            _ => panic!("Escape invalid character"),
+    let leading_char = cursor.first().expect("No character after backslash");
+    let escaped_length = match leading_char {
+        'b' | 't' | 'n' | 'f' | 'r' | '"' | '\'' | '\\' => cursor.bump().unwrap().len_utf8(),
+        whitespace if is_whitespace(whitespace) || is_line_terminator_start(whitespace) => {
+            whitespace_and_newline(cursor)
         }
+        _ => panic!("Escape invalid character"),
+    };
+    backslash + escaped_length
 }
 
 fn eat_pound(cursor: &mut Cursor, limit: Option<usize>) -> usize {
@@ -222,5 +228,14 @@ mod string_tests {
         let mut cursor = Cursor::from_iter(target.chars());
         let length = string(&mut cursor).0;
         TestResult::from_bool(expected == length)
+    }
+
+    #[test]
+    fn test_string_escape_newline() {
+        let target = r#""a string with\ 
+        escaped newline""#;
+        let mut cursor = Cursor::from_iter(target.chars());
+        let length = string(&mut cursor).0;
+        assert_eq!(length, target.len())
     }
 }
