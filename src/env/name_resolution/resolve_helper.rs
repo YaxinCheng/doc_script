@@ -41,34 +41,21 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
         name: &N,
     ) -> Option<Resolved<'ast, 'a>> {
         let name_slice = name.as_ref();
-        Self::resolve_expression(scope, name_slice)
-            .or_else(|| Self::resolve_struct(scope, name_slice))
+        Self::resolve_declared(scope, name_slice)
             .or_else(|| self.resolve_from_mods(scope, name))
             .or_else(|| Self::resolve_mod(scope, name_slice))
     }
 
-    pub(in crate::env::name_resolution) fn resolve_expression(
-        scope: &Scope<'ast, 'a>,
-        name_slice: &[&str],
-    ) -> Option<Resolved<'ast, 'a>> {
-        let expression = scope.name_spaces.expressions.get(name_slice).copied()?;
-        let resolved = match expression {
-            ExpressionDeclaration::Constant(constant) => Resolved::Constant(constant),
-            ExpressionDeclaration::Field(field) => Resolved::Field(field),
-        };
-        Some(resolved)
-    }
-
-    pub(in crate::env::name_resolution) fn resolve_struct(
+    pub(in crate::env::name_resolution) fn resolve_declared(
         scope: &Scope<'ast, 'a>,
         name_slice: &[&str],
     ) -> Option<Resolved<'ast, 'a>> {
         scope
             .name_spaces
-            .structs
+            .declared
             .get(name_slice)
             .copied()
-            .map(Resolved::Struct)
+            .map(Resolved::from)
     }
 
     fn resolve_from_mods<N: AsRef<[&'a str]>>(

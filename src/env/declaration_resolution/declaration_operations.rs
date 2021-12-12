@@ -60,7 +60,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
         };
         let duplicate_declaration = scope
             .name_spaces
-            .expressions
+            .declared
             .insert(constant_name, constant.into());
         assert!(
             duplicate_declaration.is_none(),
@@ -164,8 +164,8 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
         let scope = self.0.get_scope_mut(scope_id);
         let duplicate_declaration = scope
             .name_spaces
-            .structs
-            .insert(vec![r#struct.name], r#struct);
+            .declared
+            .insert(vec![r#struct.name], r#struct.into());
         assert!(
             duplicate_declaration.is_none(),
             "Cannot redefine struct in the same module with name: {}",
@@ -180,7 +180,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
         for field in &r#struct.fields {
             let insert_result = body_scope
                 .name_spaces
-                .expressions
+                .declared
                 .insert(vec!["self", field.name], field.into());
             assert!(
                 insert_result.is_none(),

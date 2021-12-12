@@ -44,25 +44,31 @@ impl<'ast, 'a> Scope<'ast, 'a> {
 pub struct NameSpaces<'ast, 'a> {
     pub modules: HashMap<&'a str, ScopeId>,
     pub wildcard_imports: HashSet<ScopeId>,
-    pub expressions: HashMap<Vec<&'a str>, ExpressionDeclaration<'ast, 'a>>,
-    pub structs: HashMap<Vec<&'a str>, &'ast StructDeclaration<'a>>,
+    pub declared: HashMap<Vec<&'a str>, DeclaredElement<'ast, 'a>>,
 }
 
-#[cfg_attr(test, derive(Debug, EnumAsInner))]
+#[cfg_attr(test, derive(Debug, EnumAsInner, Eq, PartialEq))]
 #[derive(Copy, Clone)]
-pub enum ExpressionDeclaration<'ast, 'a> {
+pub enum DeclaredElement<'ast, 'a> {
     Constant(&'ast ConstantDeclaration<'a>),
     Field(&'ast Field<'a>),
+    Struct(&'ast StructDeclaration<'a>),
 }
 
-impl<'ast, 'a> From<&'ast ConstantDeclaration<'a>> for ExpressionDeclaration<'ast, 'a> {
+impl<'ast, 'a> From<&'ast ConstantDeclaration<'a>> for DeclaredElement<'ast, 'a> {
     fn from(constant: &'ast ConstantDeclaration<'a>) -> Self {
         Self::Constant(constant)
     }
 }
 
-impl<'ast, 'a> From<&'ast Field<'a>> for ExpressionDeclaration<'ast, 'a> {
+impl<'ast, 'a> From<&'ast Field<'a>> for DeclaredElement<'ast, 'a> {
     fn from(field: &'ast Field<'a>) -> Self {
         Self::Field(field)
+    }
+}
+
+impl<'ast, 'a> From<&'ast StructDeclaration<'a>> for DeclaredElement<'ast, 'a> {
+    fn from(structure: &'ast StructDeclaration<'a>) -> Self {
+        Self::Struct(structure)
     }
 }

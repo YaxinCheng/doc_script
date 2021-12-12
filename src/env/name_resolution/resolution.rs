@@ -93,8 +93,7 @@ impl<'ast, 'a, 'env> NameResolver<'ast, 'a, 'env> {
     ) -> Option<Resolved<'ast, 'a>> {
         let name = std::slice::from_ref(&name);
         let scope = self.environment.get_scope(module_scope);
-        ResolveHelper::resolve_expression(scope, name)
-            .or_else(|| ResolveHelper::resolve_struct(scope, name))
+        ResolveHelper::resolve_declared(scope, name)
             .or_else(|| ResolveHelper::resolve_mod(scope, name))
     }
 

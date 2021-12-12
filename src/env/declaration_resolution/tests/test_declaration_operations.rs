@@ -26,7 +26,7 @@ fn test_add_constant() {
     let actual = env
         .get_scope(GLOBAL_SCOPE)
         .name_spaces
-        .expressions
+        .declared
         .get(&vec!["a"])
         .expect("Failed to get from namespace")
         .into_constant()
@@ -55,9 +55,11 @@ fn test_add_struct_declaration() {
     let actual = *env
         .get_scope(GLOBAL_SCOPE)
         .name_spaces
-        .structs
+        .declared
         .get(&vec!["Text"])
-        .expect("Failed to find from namespace");
+        .expect("Failed to find from namespace")
+        .as_struct()
+        .unwrap();
     assert!(std::ptr::eq(expected, actual))
 }
 

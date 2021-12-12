@@ -1,7 +1,5 @@
-use crate::ast::{
-    AbstractSyntaxTree, ConstantDeclaration, Declaration, Import, Name, StructDeclaration,
-};
-use crate::env::scope::{ExpressionDeclaration, Scope, ScopeId};
+use crate::ast::{AbstractSyntaxTree, Declaration, Import, Name};
+use crate::env::scope::{DeclaredElement, Scope, ScopeId};
 use crate::env::Environment;
 
 pub(in crate::env) struct Importer<'ast, 'a, 'env>(pub &'env mut Environment<'ast, 'a>);
@@ -88,12 +86,12 @@ impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
             .map(|scope_id| self.0.get_scope(scope_id))
             .unwrap_or_else(|| panic!("Failed to resolve module: {}", module_path.join(".")));
         let element_name = vec![*last_element];
-        if let Some(&struct_declaration) = scope.name_spaces.structs.get(&element_name) {
-            Importing::Struct(struct_declaration, element_name)
-        } else if let Some(ExpressionDeclaration::Constant(constant_declaration)) =
-            scope.name_spaces.expressions.get(&element_name)
-        {
-            Importing::Expression(constant_declaration, element_name)
+        if let Some(declared) = scope.name_spaces.declared.get(&element_name) {
+            debug_assert!(
+                !matches!(declared, DeclaredElement::Field(_)),
+                "Cannot import field"
+            );
+            Importing::ExpressionOrStruct(*declared, element_name)
         } else if let Some(&scope_id) = scope.name_spaces.modules.get(last_element) {
             Importing::Module(scope_id, last_element)
         } else {
@@ -105,8 +103,7 @@ impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
 enum Importing<'ast, 'a> {
     Wildcard(ScopeId, &'ast Name<'a>),
     Module(ScopeId, &'a str),
-    Expression(&'ast ConstantDeclaration<'a>, Vec<&'a str>),
-    Struct(&'ast StructDeclaration<'a>, Vec<&'a str>),
+    ExpressionOrStruct(DeclaredElement<'ast, 'a>, Vec<&'a str>),
 }
 
 impl<'ast, 'a> Importing<'ast, 'a> {
@@ -115,8 +112,9 @@ impl<'ast, 'a> Importing<'ast, 'a> {
         match self {
             Wildcard(scope_id, name) => Self::import_wildcard(scope_id, name, target_scope),
             Module(scope_id, name) => Self::import_module(scope_id, name, target_scope),
-            Expression(constant, name) => Self::import_expression(constant, name, target_scope),
-            Struct(r#struct, name) => Self::import_struct(r#struct, name, target_scope),
+            ExpressionOrStruct(declared, name) => {
+                Self::import_expression(declared, name, target_scope)
+            }
         }
     }
 
@@ -142,29 +140,16 @@ impl<'ast, 'a> Importing<'ast, 'a> {
         )
     }
 
-    // constant import can be shadowed
+    // constant or struct import can be shadowed
     fn import_expression(
-        constant: &'ast ConstantDeclaration<'a>,
+        element: DeclaredElement<'ast, 'a>,
         name: Vec<&'a str>,
         target_scope: &mut Scope<'ast, 'a>,
     ) {
         target_scope
             .name_spaces
-            .expressions
+            .declared
             .entry(name)
-            .or_insert_with(|| constant.into());
-    }
-
-    // struct import can be shadowed
-    fn import_struct(
-        r#struct: &'ast StructDeclaration<'a>,
-        name: Vec<&'a str>,
-        target_scope: &mut Scope<'ast, 'a>,
-    ) {
-        target_scope
-            .name_spaces
-            .structs
-            .entry(name)
-            .or_insert(r#struct);
+            .or_insert(element);
     }
 }
