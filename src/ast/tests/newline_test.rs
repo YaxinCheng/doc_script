@@ -60,18 +60,21 @@ fn test_struct_init(text: &str) {
         .next()
         .expect("Failed to find expression");
     let expected = Expression::StructInit {
-        name: Name::Simple("Test"),
+        name: Name::simple("Test"),
         parameters: vec![],
-        body: vec![
-            Expression::Literal {
-                kind: LiteralKind::Integer,
-                lexeme: "42",
-            },
-            Expression::Literal {
-                kind: LiteralKind::String,
-                lexeme: r#""hello""#,
-            },
-        ],
+        init_content: Some(
+            vec![
+                Expression::Literal {
+                    kind: LiteralKind::Integer,
+                    lexeme: "42",
+                },
+                Expression::Literal {
+                    kind: LiteralKind::String,
+                    lexeme: r#""hello""#,
+                },
+            ]
+            .into(),
+        ),
     };
     assert_eq!(expression, expected)
 }
@@ -126,8 +129,8 @@ fn test_import_statement(text: &str) {
     .next()
     .expect("Failed to find import");
     let expected = Import::Multiple {
-        prefix: Name::Qualified(vec!["test", "import"]),
-        suffices: vec![Name::Simple("first"), Name::Simple("second")],
+        prefix: Name::qualified(vec!["test", "import"]),
+        suffices: vec![Name::simple("first"), Name::simple("second")],
     };
     assert_eq!(import, expected)
 }

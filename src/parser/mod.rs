@@ -16,7 +16,11 @@ pub fn parse<'a>(tokens: impl Iterator<Item = Token<'a>>) -> models::ParseTree<'
         ];
     let mut node_stack: Vec<Node> = vec![Node::Leaf(parsing::START_TOKEN)];
     let top = |stack: &[_]| stack.last().cloned().expect("Empty stack");
-    for token in tokens.chain(std::iter::once(parsing::END_TOKEN)) {
+    let mut tokens = tokens.chain(std::iter::once(parsing::END_TOKEN)).peekable();
+    while let Some(token) = tokens.next() {
+        if should_skip(token, tokens.peek()) {
+            continue;
+        }
         while let Some(production) = parsing::reduce(top(&state_stack), token) {
             let new_stack_size = node_stack.len() - production.rhs.len();
             let children = node_stack.drain(new_stack_size..).collect::<Vec<_>>();
@@ -43,6 +47,22 @@ pub fn parse<'a>(tokens: impl Iterator<Item = Token<'a>>) -> models::ParseTree<'
     }
     node_stack.pop();
     ParseTree::from(node_stack.pop().expect("node_stack is empty"))
+}
+
+fn should_skip(token: Token, next_token: Option<&Token>) -> bool {
+    matches!(
+        (token, next_token),
+        (
+            Token {
+                kind: TokenKind::NewLine,
+                lexeme: _
+            },
+            Some(Token {
+                kind: TokenKind::Separator,
+                lexeme: "."
+            })
+        )
+    )
 }
 
 #[cfg(test)]

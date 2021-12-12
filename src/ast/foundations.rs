@@ -1,8 +1,10 @@
 use super::check_unpack;
 use super::Import;
 use super::{Node, NodeKind};
-use crate::ast::{ConstantDeclaration, StructDeclaration};
+use crate::ast::{debug_check, ConstantDeclaration, StructDeclaration};
 use crate::search::BreadthFirst;
+#[cfg(test)]
+use enum_as_inner::EnumAsInner;
 
 #[cfg_attr(test, derive(Debug, PartialEq, Eq))]
 pub struct CompilationUnit<'a> {
@@ -23,7 +25,7 @@ impl<'a> From<Node<'a>> for CompilationUnit<'a> {
     }
 }
 
-#[cfg_attr(test, derive(Debug, Eq, PartialEq))]
+#[cfg_attr(test, derive(Debug, Eq, PartialEq, EnumAsInner))]
 pub enum Declaration<'a> {
     Import(Import<'a>),
     Constant(ConstantDeclaration<'a>),
@@ -60,10 +62,14 @@ impl<'a> From<Node<'a>> for Declaration<'a> {
             Node::Internal {
                 kind: NodeKind::DeclarationStatement,
                 mut children,
-            } => children
-                .pop()
-                .map(Declaration::from)
-                .expect("Declaration should have one child"),
+            } => {
+                let _end_of_line = children.pop();
+                debug_check! { _end_of_line, Some(Node::Internal { kind: NodeKind::EOL, .. }) }
+                children
+                    .pop()
+                    .map(Declaration::from)
+                    .expect("Declaration should have one child")
+            }
             kind => unreachable!("Unexpected kind: {:?}", kind),
         }
     }

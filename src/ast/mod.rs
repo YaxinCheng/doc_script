@@ -3,7 +3,9 @@ mod expressions;
 mod field;
 mod foundations;
 mod import;
-mod names;
+mod name;
+mod parameter;
+mod scoped_elements;
 mod statements;
 #[cfg(test)]
 mod tests;
@@ -15,7 +17,9 @@ pub use expressions::*;
 pub use field::*;
 pub use foundations::*;
 pub use import::*;
-pub use names::*;
+pub use name::*;
+pub use parameter::*;
+pub use scoped_elements::*;
 pub use statements::*;
 
 macro_rules! check_unpack {

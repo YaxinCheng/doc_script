@@ -20,7 +20,7 @@ fn test_simple_import() {
     let import = Import::from(node);
     assert_eq!(
         import,
-        Import::Single(Name::Qualified(vec!["images", "mountains", "blue"]))
+        Import::Single(Name::qualified(vec!["images", "mountains", "blue"]))
     )
 }
 
@@ -45,11 +45,11 @@ fn test_multiple_import() {
     assert_eq!(
         import,
         Import::Multiple {
-            prefix: Name::Qualified(vec!["images", "canada"]),
+            prefix: Name::qualified(vec!["images", "canada"]),
             suffices: vec![
-                Name::Qualified(vec!["mountains", "blue"]),
-                Name::Qualified(vec!["lakes", "ontario"]),
-                Name::Simple("parks")
+                Name::qualified(vec!["mountains", "blue"]),
+                Name::qualified(vec!["lakes", "ontario"]),
+                Name::simple("parks")
             ]
         }
     )
@@ -73,7 +73,7 @@ fn test_imports_wildcard() {
     let import = Import::from(node);
     assert_eq!(
         import,
-        Import::Wildcard(Name::Qualified(vec!["images", "canada"]))
+        Import::Wildcard(Name::qualified(vec!["images", "canada"]))
     )
 }
 

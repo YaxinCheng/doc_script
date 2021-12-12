@@ -4,8 +4,10 @@ use super::{Node, NodeKind};
 use crate::search::BreadthFirst;
 #[cfg(debug_assertions)]
 use crate::tokenizer::{Token, TokenKind};
+#[cfg(test)]
+use enum_as_inner::EnumAsInner;
 
-#[cfg_attr(test, derive(Debug, Eq, PartialEq))]
+#[cfg_attr(test, derive(Debug, Eq, PartialEq, EnumAsInner))]
 pub enum Import<'a> {
     Single(Name<'a>),
     Multiple {

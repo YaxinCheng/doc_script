@@ -51,7 +51,7 @@ where
                 self.queue.extend((self.get_children)(item))
             }
         }
-        return None;
+        None
     }
 }
 

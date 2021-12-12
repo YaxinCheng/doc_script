@@ -25,6 +25,24 @@ impl<'a> From<Node<'a>> for Statement<'a> {
                 kind: NodeKind::StructDeclarationStatement,
                 children,
             } => Self::struct_declaration(children),
+            Node::Internal {
+                kind: NodeKind::Statement,
+                mut children,
+            } => children
+                .pop()
+                .map(Self::from)
+                .expect("Expect ExpressionStatement or DeclarationStatement"),
+            Node::Internal {
+                kind: NodeKind::DeclarationStatement,
+                mut children,
+            } => {
+                let _end_of_line = children.pop();
+                debug_check! { _end_of_line, Some(Node::Internal { kind: NodeKind::EOL, .. }) };
+                children
+                    .pop()
+                    .map(Self::from)
+                    .expect("Expect StructDeclarationStatement or ImportDeclaration")
+            }
             node => unreachable!("Unexpected node reached: {:?}", node),
         }
     }

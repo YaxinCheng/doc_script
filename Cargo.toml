@@ -8,7 +8,9 @@ edition = "2021"
 
 [dependencies]
 thiserror = "1.0"
+scope_macro = { path = "./scope_macro"}
 
 [dev-dependencies]
 quickcheck = "1"
 quickcheck_macros = "1"
+enum-as-inner = "0.3"

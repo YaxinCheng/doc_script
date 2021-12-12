@@ -351,7 +351,12 @@ fn write_lookup_table(
     lookup_table: Vec<BinaryHeap<Reverse<(usize, usize)>>>,
     name: &str,
 ) -> Result<()> {
-    writeln!(writer, "const {}: &[&[(usize, usize)]] = &[", name)?;
+    writeln!(
+        writer,
+        "const {}: [&[(usize, usize)]; {}] = [",
+        name,
+        lookup_table.len()
+    )?;
     for mut entry in lookup_table {
         write!(writer, "&[")?;
         while let Some(Reverse((symbol, target))) = entry.pop() {

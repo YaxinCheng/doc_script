@@ -1,6 +1,6 @@
 use super::Cursor;
 
-pub fn identifier<'a>(cursor: &mut Cursor<'a>) -> usize {
+pub fn identifier(cursor: &mut Cursor) -> usize {
     debug_assert!(cursor.first().map(is_identifier_start).unwrap_or_default());
     cursor.eat_while(is_identifier_continue)
 }
@@ -15,8 +15,8 @@ pub fn is_identifier_continue(c: char) -> bool {
 
 #[cfg(test)]
 mod identifier_tests {
-    use super::Cursor;
     use super::identifier;
+    use super::Cursor;
 
     #[test]
     fn test_ascii_letters() {

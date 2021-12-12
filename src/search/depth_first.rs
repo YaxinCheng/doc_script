@@ -1,5 +1,7 @@
 use std::option::Option::Some;
 
+/// DepthFirst traverses with a depth first order
+/// (**right to left** regarding the order of the given children).
 pub struct DepthFirst<Type, Move, Verify> {
     get_children: Move,
     verifier: Verify,
@@ -37,7 +39,7 @@ where
                 self.stack.extend((self.get_children)(item))
             }
         }
-        return None;
+        None
     }
 }
 

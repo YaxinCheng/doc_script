@@ -15,8 +15,6 @@ pub struct Field<'a> {
 impl<'a> From<Node<'a>> for Field<'a> {
     fn from(node: Node<'a>) -> Self {
         let mut children = check_unpack!(node, NodeKind::Field);
-        let _end_of_line = children.pop();
-        debug_check! { _end_of_line, Some(Node::Internal { kind: NodeKind::EOL, .. }) }
         let default_value = Self::eat_default_value(&mut children);
         let field_type = children.pop().map(Type::from).expect("Expect field_type");
         let _colon = children.pop();

@@ -1,5 +1,7 @@
-use super::super::{Expression, Name, Parameter};
+use super::super::{Expression, Name};
 use super::*;
+use crate::ast::parameter::Parameter;
+use crate::ast::scoped_elements::StructInitContent;
 use crate::search::BreadthFirst;
 
 #[test]
@@ -112,16 +114,18 @@ fn test_struct_init_with_body() {
         "const view = View { Text(\"label\")\n View()\n }\n",
         vec![],
         vec![
-            Expression::MethodInvocation {
-                name: Name::Simple("Text"),
+            Expression::StructInit {
+                name: Name::simple("Text"),
                 parameters: vec![Parameter::Plain(Expression::Literal {
                     kind: LiteralKind::String,
                     lexeme: "\"label\"",
                 })],
+                init_content: None,
             },
-            Expression::MethodInvocation {
-                name: Name::Simple("View"),
+            Expression::StructInit {
+                name: Name::simple("View"),
                 parameters: vec![],
+                init_content: None,
             },
         ],
     );
@@ -133,23 +137,28 @@ fn test_struct_init_nested_body() {
         "const view = View { Text(\"label\")\n View() { Text(\"nested\") }\n}\n",
         vec![],
         vec![
-            Expression::MethodInvocation {
-                name: Name::Simple("Text"),
+            Expression::StructInit {
+                name: Name::simple("Text"),
                 parameters: vec![Parameter::Plain(Expression::Literal {
                     kind: LiteralKind::String,
                     lexeme: "\"label\"",
                 })],
+                init_content: None,
             },
             Expression::StructInit {
-                name: Name::Simple("View"),
+                name: Name::simple("View"),
                 parameters: vec![],
-                body: vec![Expression::MethodInvocation {
-                    name: Name::Simple("Text"),
-                    parameters: vec![Parameter::Plain(Expression::Literal {
-                        kind: LiteralKind::String,
-                        lexeme: "\"nested\"",
-                    })],
-                }],
+                init_content: Some(
+                    vec![Expression::StructInit {
+                        name: Name::simple("Text"),
+                        parameters: vec![Parameter::Plain(Expression::Literal {
+                            kind: LiteralKind::String,
+                            lexeme: "\"nested\"",
+                        })],
+                        init_content: None,
+                    }]
+                    .into(),
+                ),
             },
         ],
     )
@@ -160,33 +169,29 @@ fn test_struct_init_basic(
     expected_parameters: Vec<Parameter>,
     expected_body: Vec<Expression>,
 ) {
+    let expected_body = if expected_body.is_empty() {
+        None
+    } else {
+        Some(StructInitContent::from(expected_body))
+    };
     let parse_tree = parse(tokenize(statement));
     let node = DepthFirst::find(
         parse_tree.root,
-        |node| {
-            matches!(
-                node.kind(),
-                Some(NodeKind::StructInitExpression | NodeKind::MethodInvocation)
-            )
-        },
+        |node| matches!(node.kind(), Some(NodeKind::StructInitExpression)),
         |node| node.children().unwrap_or_default(),
     )
     .next()
-    .expect("Cannot find StructInitExpression or MethodInvocation");
+    .expect("Cannot find StructInitExpression");
     let expression = Expression::from(node);
     match expression {
         Expression::StructInit {
             name,
             parameters,
-            body,
+            init_content: body,
         } => {
-            assert_eq!(name, Name::Simple("View"));
+            assert_eq!(name, Name::simple("View"));
             assert_eq!(parameters, expected_parameters);
             assert_eq!(body, expected_body);
-        }
-        Expression::MethodInvocation { name, parameters } => {
-            assert_eq!(name, Name::Simple("View"));
-            assert_eq!(parameters, expected_parameters);
         }
         expression => panic!("Unexpected expression: {:?}", expression),
     }
@@ -219,13 +224,13 @@ fn test_method_invocation(statement: &str) {
                     kind: LiteralKind::Integer,
                     lexeme: "3",
                 }),
-                name: Name::Simple("pow"),
+                name: Name::simple("pow"),
                 parameters: vec![Parameter::Plain(Expression::Literal {
                     kind: LiteralKind::Integer,
                     lexeme: "2",
                 })],
             }),
-            name: Name::Simple("abs"),
+            name: Name::simple("abs"),
             parameters: vec![],
         }
     )
@@ -235,7 +240,7 @@ fn test_method_invocation(statement: &str) {
 fn test_const_use_qualified() {
     let program = "const text = book.content\n";
     let expression = find_first_expression(program).expect("Expression expected");
-    let expected = Expression::ConstUse(Name::Qualified(vec!["book", "content"]));
+    let expected = Expression::ConstUse(Name::qualified(vec!["book", "content"]));
     assert_eq!(expression, expected)
 }
 
@@ -243,7 +248,7 @@ fn test_const_use_qualified() {
 fn test_const_use_simple() {
     let program = "const text = book\n";
     let expression = find_first_expression(program).expect("Expression expected");
-    let expected = Expression::ConstUse(Name::Simple("book"));
+    let expected = Expression::ConstUse(Name::simple("book"));
     assert_eq!(expression, expected)
 }
 
