@@ -37,8 +37,8 @@ fn test_constant_declaration() {
 fn struct_declaration_test() {
     let program = r#"
 struct Square(
-    content: String = "",
-    width: Int
+    width: Int,
+    content: String = ""
 ) {
     const height = width
 }
@@ -48,17 +48,17 @@ struct Square(
         name: "Square",
         fields: vec![
             Field {
+                name: "width",
+                field_type: Type(Name::simple("Int")),
+                default_value: None,
+            },
+            Field {
                 name: "content",
                 field_type: Type(Name::simple("String")),
                 default_value: Some(Expression::Literal {
                     kind: LiteralKind::String,
                     lexeme: r#""""#,
                 }),
-            },
-            Field {
-                name: "width",
-                field_type: Type(Name::simple("Int")),
-                default_value: None,
             },
         ],
         body: vec![ConstantDeclaration {
@@ -74,14 +74,19 @@ struct Square(
 fn struct_declaration_without_body_test() {
     let program = r#"
 struct Square(
+    width: Int,
     content: String = "",
-    width: Int
 )
 "#;
     let struct_declaration = get_struct(program);
     let expected = Statement::StructDeclaration(StructDeclaration {
         name: "Square",
         fields: vec![
+            Field {
+                name: "width",
+                field_type: Type(Name::simple("Int")),
+                default_value: None,
+            },
             Field {
                 name: "content",
                 field_type: Type(Name::simple("String")),
@@ -90,15 +95,22 @@ struct Square(
                     lexeme: r#""""#,
                 }),
             },
-            Field {
-                name: "width",
-                field_type: Type(Name::simple("Int")),
-                default_value: None,
-            },
         ],
         body: StructBody::default(),
     });
     assert_eq!(struct_declaration, expected)
+}
+
+#[test]
+#[should_panic]
+fn struct_default_field_comes_first() {
+    let program = r#"
+struct Square(
+    content: String = "",
+    width: Int,
+)
+    "#;
+    get_struct(program);
 }
 
 #[test]

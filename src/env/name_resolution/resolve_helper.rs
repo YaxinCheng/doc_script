@@ -42,8 +42,18 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
     ) -> Option<Resolved<'ast, 'a>> {
         let name_slice = name.as_ref();
         Self::resolve_declared(scope, name_slice)
-            .or_else(|| self.resolve_from_mods(scope, name))
+            .or_else(|| self.resolve_from_wildcard_imports(scope, name))
             .or_else(|| Self::resolve_mod(scope, name_slice))
+    }
+
+    pub(in crate::env::name_resolution) fn resolve_in_module(
+        &self,
+        module_scope: ScopeId,
+        name: &'a str,
+    ) -> Option<Resolved<'ast, 'a>> {
+        let name = std::slice::from_ref(&name);
+        let module_scope = self.0.get_scope(module_scope);
+        Self::resolve_declared(module_scope, name).or_else(|| Self::resolve_mod(module_scope, name))
     }
 
     pub(in crate::env::name_resolution) fn resolve_declared(
@@ -58,7 +68,7 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
             .map(Resolved::from)
     }
 
-    fn resolve_from_mods<N: AsRef<[&'a str]>>(
+    fn resolve_from_wildcard_imports<N: AsRef<[&'a str]>>(
         &self,
         scope: &Scope<'ast, 'a>,
         name: &N,
@@ -85,5 +95,38 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
                 .map(Resolved::Module),
             _ => None,
         }
+    }
+
+    pub(in crate::env::name_resolution) fn resolve_module_lead_name<N: AsRef<[&'a str]>>(
+        &self,
+        scope: ScopeId,
+        name: N,
+    ) -> (Resolved<'ast, 'a>, Vec<&'a str>) {
+        let (first_component, rest) = super::split_first_component(name.as_ref());
+        let (mut last_resolved, _) = ResolveHelper(self.0)
+            .resolve(scope, &first_component)
+            .unwrap_or_else(|| panic!("Name `{}` is unresolvable", first_component.join(".")));
+        let mut access_iter = rest.iter();
+        while let Some(component) = access_iter.next() {
+            last_resolved = match last_resolved {
+                Resolved::Module(module_scope) => self
+                    .resolve_in_module(module_scope, component)
+                    .unwrap_or_else(|| panic!("`{}` cannot be found in module", component)),
+                resolved @ (Resolved::Constant(_) | Resolved::Field(_)) => {
+                    return (
+                        resolved,
+                        std::iter::once(component)
+                            .chain(access_iter)
+                            .copied()
+                            .collect(),
+                    )
+                }
+                Resolved::Struct(_) => panic!("Cannot access field from struct type definition"),
+                Resolved::InstanceAccess { .. } => {
+                    unreachable!("Field cannot be found at this stage")
+                }
+            };
+        }
+        (last_resolved, vec![])
     }
 }

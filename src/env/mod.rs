@@ -6,7 +6,6 @@ pub mod scope;
 
 use crate::ast::AbstractSyntaxTree;
 
-use crate::env::name_resolution::NameResolver;
 pub use environment::Environment;
 
 pub fn construct<'ast, 'a>(
@@ -19,8 +18,9 @@ pub fn construct<'ast, 'a>(
         .map(convert_to_module)
         .collect::<Vec<_>>();
     let mut environment = Environment::construct(syntax_trees, &module_paths);
-    let unresolved_names = environment.resolve_declarations(syntax_trees, &module_paths);
-    NameResolver::environment(&mut environment).resolve_names(unresolved_names);
+    let unresolved_names =
+        declaration_resolution::resolve(&mut environment, syntax_trees, &module_paths);
+    name_resolution::resolve(&mut environment, unresolved_names, syntax_trees);
     environment
 }
 

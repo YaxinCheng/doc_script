@@ -56,9 +56,9 @@ impl<'a> Iterator for Tokenizer<'a> {
             token.kind,
             TokenKind::WhiteSpace | TokenKind::Comment | TokenKind::NewLine
         ) {
-            self.meaningful_content_count += 1;
+            self.last_token.replace(token);
         }
-        self.last_token.replace(token);
+        self.adjust_meaning_content(&token);
         Some(token)
     }
 }
@@ -111,12 +111,29 @@ impl<'a> Tokenizer<'a> {
         self.non_literal_token(whitespace::whitespace, TokenKind::WhiteSpace)
     }
 
+    fn adjust_meaning_content(&mut self, token: &Token) {
+        match token {
+            Token {
+                kind: TokenKind::Separator,
+                lexeme: ";",
+            }
+            | Token {
+                kind: TokenKind::NewLine,
+                lexeme: _,
+            } => self.meaningful_content_count = 0,
+            Token {
+                kind: TokenKind::WhiteSpace | TokenKind::Comment,
+                ..
+            } => (),
+            _ => self.meaningful_content_count += 1,
+        }
+    }
+
     fn newline_token(&mut self) -> Token<'a> {
         let allowed_in_brackets = matches!(&self.unbalanced_brackets.last(), None | Some('{'));
         let has_meaningful_content = self.meaningful_content_count > 0;
         let token = self.non_literal_token(whitespace::newline, TokenKind::NewLine);
         if allowed_in_brackets && has_meaningful_content {
-            self.meaningful_content_count = 0;
             token
         } else {
             Token {

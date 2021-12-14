@@ -1,6 +1,9 @@
+mod test_chaining_method;
 mod test_disambiguate;
+mod test_name_resolution;
 mod test_resolve_helper;
 mod test_resolve_types;
+mod test_type_linker;
 
 use super::super::construct_env;
 

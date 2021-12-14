@@ -17,14 +17,18 @@ pub(in crate::env) use declaration_operations::DeclarationAdder;
 #[cfg(test)]
 pub(in crate::env) use import_operations::Importer;
 
-impl<'ast, 'a> Environment<'ast, 'a> {
-    pub(in crate::env) fn resolve_declarations(
-        &mut self,
-        syntax_trees: &'ast [AbstractSyntaxTree<'a>],
-        module_paths: &[Vec<&'a str>],
-    ) -> HashSet<&'ast Name<'a>> {
-        let unresolved_names = DeclarationAdder(self).add_from(syntax_trees, module_paths);
-        Importer(self).import_from(syntax_trees, module_paths);
-        unresolved_names
-    }
+#[derive(Default)]
+pub(in crate::env) struct UnresolvedNames<'ast, 'a> {
+    pub type_names: HashSet<&'ast Name<'a>>,
+    pub expression_names: HashSet<&'ast Name<'a>>,
+}
+
+pub(in crate::env) fn resolve<'ast, 'a>(
+    environment: &mut Environment<'ast, 'a>,
+    syntax_trees: &'ast [AbstractSyntaxTree<'a>],
+    module_paths: &[Vec<&'a str>],
+) -> UnresolvedNames<'ast, 'a> {
+    let unresolved = DeclarationAdder(environment).add_from(syntax_trees, module_paths);
+    Importer(environment).import_from(syntax_trees, module_paths);
+    unresolved
 }

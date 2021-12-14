@@ -2,7 +2,7 @@ use super::{check_unpack, debug_check, Expression, Node, NodeKind};
 #[cfg(debug_assertions)]
 use crate::tokenizer::{Token, TokenKind};
 
-#[cfg_attr(test, derive(Debug, Eq, PartialEq))]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Parameter<'a> {
     Plain(Expression<'a>),
     Labelled {
@@ -13,7 +13,10 @@ pub enum Parameter<'a> {
 
 impl<'a> From<Node<'a>> for Parameter<'a> {
     fn from(node: Node<'a>) -> Self {
-        let mut children = check_unpack!(node, NodeKind::Parameter);
+        let mut children = check_unpack!(
+            node,
+            NodeKind::NamedParameter | NodeKind::PositionalParameter
+        );
         let expression = children
             .pop()
             .map(Expression::from)
@@ -32,6 +35,21 @@ impl<'a> From<Node<'a>> for Parameter<'a> {
                 label,
                 content: expression,
             }
+        }
+    }
+}
+
+impl<'a> Parameter<'a> {
+    pub fn is_labelled(&self) -> bool {
+        match self {
+            Parameter::Plain(_) => false,
+            Parameter::Labelled { .. } => true,
+        }
+    }
+
+    pub fn expression(&self) -> &Expression<'a> {
+        match self {
+            Parameter::Plain(content) | Parameter::Labelled { label: _, content } => content,
         }
     }
 }

@@ -73,14 +73,15 @@ impl<'ast, 'a, 'env> ScopeGenerator<'ast, 'a, 'env> {
             }
             Expression::ChainingMethodInvocation {
                 receiver,
-                name,
-                parameters,
+                accessors,
             } => {
-                name.set_scope(scope_id);
                 self.generate_for_expression(receiver, scope_id);
-                parameters
+                for accessor_value in accessors
                     .iter_mut()
-                    .for_each(|parameter| self.generate_for_parameter(parameter, scope_id));
+                    .filter_map(|accessor| accessor.value.as_mut())
+                {
+                    self.generate_for_expression(accessor_value, scope_id);
+                }
             }
             Expression::Block(block) => {
                 if block.statements.is_empty() {

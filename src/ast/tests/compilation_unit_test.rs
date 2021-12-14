@@ -3,7 +3,7 @@ use super::super::CompilationUnit;
 use super::*;
 use crate::ast::parameter::Parameter;
 use crate::ast::Expression::{ChainingMethodInvocation, StructInit};
-use crate::ast::{ConstantDeclaration, Declaration, Expression, Name};
+use crate::ast::{Accessor, ConstantDeclaration, Declaration, Expression, Name};
 use crate::tokenizer::LiteralKind::Integer;
 
 #[test]
@@ -67,11 +67,13 @@ const main = View {
                                         .into()
                                     ),
                                 }),
-                                name: Name::simple("width"),
-                                parameters: vec![Parameter::Plain(Expression::Literal {
-                                    kind: Integer,
-                                    lexeme: "300"
-                                })]
+                                accessors: vec![Accessor {
+                                    identifier: "width",
+                                    value: Some(Expression::Literal {
+                                        kind: Integer,
+                                        lexeme: "300"
+                                    })
+                                }]
                             }
                         ]
                         .into(),

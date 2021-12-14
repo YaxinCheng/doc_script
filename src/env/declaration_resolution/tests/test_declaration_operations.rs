@@ -71,6 +71,7 @@ fn kick_off<'ast, 'a>(
     let module_path = prepare_module_path();
     let mut unresolved_names = declaration_adder
         .add_from(std::slice::from_ref(syntax_tree), &module_path)
+        .expression_names
         .into_iter()
         .map(|name| &name.moniker)
         .collect::<Vec<_>>();

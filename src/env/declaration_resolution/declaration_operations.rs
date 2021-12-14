@@ -1,22 +1,21 @@
 use crate::ast::{
-    AbstractSyntaxTree, ConstantDeclaration, Declaration, Expression, Name, Parameter, Statement,
+    AbstractSyntaxTree, ConstantDeclaration, Declaration, Expression, Parameter, Statement,
     StructDeclaration,
 };
+use crate::env::declaration_resolution::UnresolvedNames;
 use crate::env::scope::*;
 use crate::env::Environment;
-use std::collections::HashSet;
-
-type Collection<T> = HashSet<T>;
 
 pub(in crate::env) struct DeclarationAdder<'ast, 'a, 'env>(pub &'env mut Environment<'ast, 'a>);
 
 impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
+    /// Add all declarations to the environment and return unresolved names
     pub fn add_from(
         mut self,
         syntax_trees: &'ast [AbstractSyntaxTree<'a>],
         module_paths: &[Vec<&'a str>],
-    ) -> Collection<&'ast Name<'a>> {
-        let mut names = Collection::new();
+    ) -> UnresolvedNames<'ast, 'a> {
+        let mut names = UnresolvedNames::default();
         for (syntax_tree, module_path) in syntax_trees.iter().zip(module_paths.iter()) {
             let module_scope = self
                 .0
@@ -33,7 +32,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
         &mut self,
         declaration: &'ast Declaration<'a>,
         scope_id: ScopeId,
-        seen_names: &mut Collection<&'ast Name<'a>>,
+        seen_names: &mut UnresolvedNames<'ast, 'a>,
     ) {
         match declaration {
             Declaration::Constant(constant) => {
@@ -51,7 +50,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
         is_struct_attr: bool,
         constant: &'ast ConstantDeclaration<'a>,
         scope_id: ScopeId,
-        seen_names: &mut Collection<&'ast Name<'a>>,
+        seen_names: &mut UnresolvedNames<'ast, 'a>,
     ) {
         let scope = self.0.get_scope_mut(scope_id);
         let constant_name = match is_struct_attr {
@@ -74,11 +73,11 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
         &mut self,
         expression: &'ast Expression<'a>,
         scope_id: ScopeId,
-        seen_names: &mut Collection<&'ast Name<'a>>,
+        seen_names: &mut UnresolvedNames<'ast, 'a>,
     ) {
         match expression {
             Expression::ConstUse(constant_name) => {
-                seen_names.insert(constant_name);
+                seen_names.expression_names.insert(constant_name);
             }
             Expression::Literal { .. } => (),
             Expression::StructInit {
@@ -86,7 +85,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
                 parameters,
                 init_content,
             } => {
-                seen_names.insert(name);
+                seen_names.type_names.insert(name);
                 parameters
                     .iter()
                     .for_each(|parameter| self.add_parameter(parameter, scope_id, seen_names));
@@ -99,14 +98,15 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
             }
             Expression::ChainingMethodInvocation {
                 receiver,
-                name,
-                parameters,
+                accessors,
             } => {
                 self.add_expression(receiver, scope_id, seen_names);
-                seen_names.insert(name);
-                parameters
+                for accessor_value in accessors
                     .iter()
-                    .for_each(|parameter| self.add_parameter(parameter, scope_id, seen_names));
+                    .filter_map(|accessor| accessor.value.as_ref())
+                {
+                    self.add_expression(accessor_value, scope_id, seen_names);
+                }
             }
             Expression::Block(block) => {
                 if block.statements.is_empty() {
@@ -125,7 +125,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
         &mut self,
         parameter: &'ast Parameter<'a>,
         scope_id: ScopeId,
-        seen_names: &mut Collection<&'ast Name<'a>>,
+        seen_names: &mut UnresolvedNames<'ast, 'a>,
     ) {
         match parameter {
             Parameter::Plain(value)
@@ -140,7 +140,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
         &mut self,
         statement: &'ast Statement<'a>,
         scope_id: ScopeId,
-        seen_names: &mut Collection<&'ast Name<'a>>,
+        seen_names: &mut UnresolvedNames<'ast, 'a>,
     ) {
         match &statement {
             Statement::Expression(expression) => {
@@ -159,7 +159,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
         &mut self,
         r#struct: &'ast StructDeclaration<'a>,
         scope_id: ScopeId,
-        seen_names: &mut Collection<&'ast Name<'a>>,
+        seen_names: &mut UnresolvedNames<'ast, 'a>,
     ) {
         let scope = self.0.get_scope_mut(scope_id);
         let duplicate_declaration = scope
@@ -178,6 +178,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
         let body_scope_id = r#struct.body.scope();
         let body_scope = self.0.get_scope_mut(body_scope_id);
         for field in &r#struct.fields {
+            seen_names.type_names.insert(&field.field_type.0);
             let insert_result = body_scope
                 .name_spaces
                 .declared
@@ -188,6 +189,11 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
                 field.name
             );
         }
+        r#struct
+            .fields
+            .iter()
+            .filter_map(|field| field.default_value.as_ref())
+            .for_each(|default_value| self.add_expression(default_value, scope_id, seen_names));
         for declaration in &r#struct.body.attributes {
             self.add_constant(true, declaration, body_scope_id, seen_names)
         }

@@ -5,7 +5,7 @@ use crate::ast::{debug_check, Expression};
 #[cfg(debug_assertions)]
 use crate::tokenizer::{Token, TokenKind};
 
-#[cfg_attr(test, derive(Debug, Eq, PartialEq))]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Field<'a> {
     pub name: &'a str,
     pub field_type: Type<'a>,
@@ -14,7 +14,7 @@ pub struct Field<'a> {
 
 impl<'a> From<Node<'a>> for Field<'a> {
     fn from(node: Node<'a>) -> Self {
-        let mut children = check_unpack!(node, NodeKind::Field);
+        let mut children = check_unpack!(node, NodeKind::PlainField | NodeKind::DefaultField);
         let default_value = Self::eat_default_value(&mut children);
         let field_type = children.pop().map(Type::from).expect("Expect field_type");
         let _colon = children.pop();
@@ -49,7 +49,7 @@ impl<'a> Field<'a> {
     }
 }
 
-#[cfg_attr(test, derive(Debug, Eq, PartialEq))]
+#[derive(Debug, Eq, PartialEq)]
 pub struct Type<'a>(pub Name<'a>);
 
 impl<'a> From<Node<'a>> for Type<'a> {

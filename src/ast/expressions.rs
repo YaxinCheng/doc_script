@@ -7,7 +7,14 @@ use crate::tokenizer::{LiteralKind, Token, TokenKind};
 #[cfg(test)]
 use enum_as_inner::EnumAsInner;
 
-#[cfg_attr(test, derive(Debug, Eq, PartialEq, EnumAsInner))]
+#[derive(Debug, Eq, PartialEq)]
+pub struct Accessor<'a> {
+    pub identifier: &'a str,
+    pub value: Option<Expression<'a>>,
+}
+
+#[cfg_attr(test, derive(EnumAsInner))]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Expression<'a> {
     Block(Block<'a>),
     StructInit {
@@ -21,8 +28,7 @@ pub enum Expression<'a> {
     },
     ChainingMethodInvocation {
         receiver: Box<Expression<'a>>,
-        name: Name<'a>,
-        parameters: Vec<Parameter<'a>>,
+        accessors: Vec<Accessor<'a>>,
     },
     ConstUse(Name<'a>),
 }
@@ -148,31 +154,47 @@ impl<'a> Expression<'a> {
 
     fn chaining_method_invocation(node: Node<'a>) -> Expression<'a> {
         let mut children = check_unpack!(node, NodeKind::ChainingMethodInvocation);
-        let parameters = Self::eat_parameters(&mut children);
-        let name = children
+        let _close_bracket = children.pop();
+        debug_check! { _close_bracket, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: ")" })) };
+        let value = match children.pop() {
+            Some(node @ Node::Internal { .. }) => {
+                let _open_bracket = children.pop();
+                debug_check! { _open_bracket, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "(" })) };
+                Some(Expression::from(node))
+            }
+            Some(_open_bracket @ Node::Leaf(_)) => {
+                debug_check! { _open_bracket, Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "(" }) };
+                None
+            }
+            _ => unreachable!("ChainingMethod has either value or bracket"),
+        };
+        let identifier = children
             .pop()
-            .map(Name::from)
+            .and_then(|node| node.token())
+            .map(|token| token.lexeme)
             .expect("Method name is missing");
         let _dot = children.pop();
         debug_check! { _dot, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "." })) };
-        if matches!(
-            children.last().and_then(Node::token),
-            Some(Token {
-                kind: TokenKind::NewLine,
-                lexeme: _
-            })
-        ) {
-            children.pop();
-        }
         let receiver = children
             .pop()
             .map(Expression::from)
             .map(Box::new)
             .expect("Receiver missing");
-        Expression::ChainingMethodInvocation {
-            receiver,
-            name,
-            parameters,
+        match *receiver {
+            Expression::ChainingMethodInvocation {
+                receiver,
+                accessors: mut accesses,
+            } => {
+                accesses.push(Accessor { identifier, value });
+                Expression::ChainingMethodInvocation {
+                    receiver,
+                    accessors: accesses,
+                }
+            }
+            _ => Expression::ChainingMethodInvocation {
+                receiver,
+                accessors: vec![Accessor { identifier, value }],
+            },
         }
     }
 
@@ -201,7 +223,12 @@ impl<'a> Expression<'a> {
             let parameters = nodes.pop().expect("Expect parameter or open bracket");
             let parameters = BreadthFirst::find(
                 parameters,
-                |node| matches!(node.kind(), Some(NodeKind::Parameter)),
+                |node| {
+                    matches!(
+                        node.kind(),
+                        Some(NodeKind::NamedParameter | NodeKind::PositionalParameter)
+                    )
+                },
                 |node| node.children().unwrap_or_default(),
             )
             .map(Parameter::from)

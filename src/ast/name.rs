@@ -6,15 +6,15 @@ use crate::tokenizer::{Token, TokenKind};
 use scope_macro::Scoped;
 use std::fmt::{Display, Formatter};
 
-#[cfg_attr(test, derive(Debug, Ord, PartialOrd))]
-#[derive(PartialEq, Eq, Clone, Scoped, Hash)] // derive(Hash) assumes scope is always not None
+#[cfg_attr(test, derive(Ord, PartialOrd))]
+#[derive(PartialEq, Eq, Clone, Scoped, Hash, Debug)] // derive(Hash) assumes scope is always not None
 pub struct Name<'a> {
     pub moniker: Moniker<'a>,
     scope: Option<ScopeId>,
 }
 
-#[cfg_attr(test, derive(Debug, Ord, PartialOrd))]
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[cfg_attr(test, derive(Ord, PartialOrd))]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub enum Moniker<'a> {
     Simple(&'a str),
     Qualified(Box<[&'a str]>),

@@ -1,7 +1,9 @@
+use super::super::{TypeChecker, TypeLinker};
 use super::try_block;
-use crate::ast::{abstract_tree, ConstantDeclaration, Field, Moniker, StructDeclaration};
+use crate::ast::{abstract_tree, Field, Name};
+use crate::env::declaration_resolution;
 use crate::env::name_resolution::NameResolver;
-use crate::env::scope::GLOBAL_SCOPE;
+use crate::env::scope::{Scoped, GLOBAL_SCOPE};
 use crate::env::Environment;
 use crate::parser::parse;
 use crate::tokenizer::tokenize;
@@ -13,59 +15,12 @@ macro_rules! test_disambiguate {
 
     ($syntax_trees: expr, $module_paths: expr, $name: expr, $scope: expr) => {{
         let mut env = Environment::construct(&mut $syntax_trees, &$module_paths);
-        env.resolve_declarations(&$syntax_trees, &$module_paths);
-        NameResolver::environment(&mut env).test_disambiguate($scope, &$name)
+        let names = declaration_resolution::resolve(&mut env, &$syntax_trees, &$module_paths);
+        TypeLinker(&mut env).link_types(names.type_names);
+        let instance_fields = NameResolver(&mut env).resolve_names(names.expression_names);
+        TypeChecker::new(instance_fields).test_resolve_from_name(&mut env, &$name);
+        env.resolved_names.remove(&$name)
     }};
-}
-
-#[test]
-fn resolve_module_constant() {
-    let mut syntax_trees = vec![
-        abstract_tree(parse(tokenize("const a = test.target\n"))),
-        abstract_tree(parse(tokenize("const target = 3\n"))),
-    ];
-    let module_paths = vec![vec![], vec!["test"]];
-    let name = Moniker::Qualified(vec!["test", "target"].into_boxed_slice());
-    let actual = test_disambiguate!(syntax_trees, module_paths, name)
-        .unwrap()
-        .into_constant()
-        .unwrap();
-    let expected = try_block!(
-        &ConstantDeclaration,
-        syntax_trees
-            .last()?
-            .compilation_unit
-            .declarations
-            .last()?
-            .as_constant()
-    )
-    .unwrap();
-    assert!(std::ptr::eq(actual, expected))
-}
-
-#[test]
-fn resolve_module_struct() {
-    let mut syntax_trees = vec![
-        abstract_tree(parse(tokenize("const a = empty.Empty()\n"))),
-        abstract_tree(parse(tokenize("struct Empty\n"))),
-    ];
-    let module_paths = vec![vec![], vec!["empty"]];
-    let target_name = Moniker::Qualified(vec!["empty", "Empty"].into_boxed_slice());
-    let actual = test_disambiguate!(syntax_trees, module_paths, target_name)
-        .unwrap()
-        .into_struct()
-        .unwrap();
-    let expected = try_block!(
-        &StructDeclaration,
-        syntax_trees
-            .last()?
-            .compilation_unit
-            .declarations
-            .last()?
-            .as_struct()
-    )
-    .unwrap();
-    assert!(std::ptr::eq(actual, expected));
 }
 
 #[test]
@@ -77,16 +32,22 @@ fn test_constant_field() {
         use system.Id
         
         const person = Person(Id(3))
+        const val = person.id.digit
         "#,
         ))),
         abstract_tree(parse(tokenize("struct Person(id: system.Id)\n"))),
         abstract_tree(parse(tokenize("struct Id(digit: Int)\n"))),
     ];
     let module_paths = vec![vec![], vec!["person"], vec!["system"]];
-    let target_name = Moniker::Qualified(vec!["person", "id", "digit"].into_boxed_slice());
-    let actual = test_disambiguate!(syntax_trees, module_paths, target_name)
+    let mut target_name = Name::qualified(vec!["person", "id", "digit"]);
+    target_name.set_scope(GLOBAL_SCOPE);
+    let actual = *test_disambiguate!(syntax_trees, module_paths, target_name)
         .unwrap()
-        .into_field()
+        .into_instance_access()
+        .unwrap()
+        .last()
+        .unwrap()
+        .as_field()
         .unwrap();
     let expected = try_block!(
         &Field,
@@ -106,6 +67,7 @@ fn test_constant_field() {
 #[test]
 fn test_field_over_package() {
     let mut syntax_trees = vec![
+        abstract_tree(parse(tokenize("const value = test.test.test\n"))),
         abstract_tree(parse(tokenize(
             r#"
         struct Test(test: Int)
@@ -114,16 +76,20 @@ fn test_field_over_package() {
         ))),
         abstract_tree(parse(tokenize("const test = 5\n"))),
     ];
-    let module_paths = vec![vec!["test"], vec!["test", "test"]];
-    let target_name = Moniker::Qualified(vec!["test", "test", "test"].into_boxed_slice());
-    let actual = test_disambiguate!(syntax_trees, module_paths, target_name)
+    let module_paths = vec![vec![], vec!["test"], vec!["test", "test"]];
+    let mut target_name = Name::qualified(vec!["test", "test", "test"]);
+    target_name.set_scope(GLOBAL_SCOPE);
+    let actual = *test_disambiguate!(syntax_trees, module_paths, target_name)
         .unwrap()
-        .into_field()
+        .into_instance_access()
+        .unwrap()
+        .last()
+        .unwrap()
+        .as_field()
         .unwrap();
     let expected = try_block!(
         &Field,
-        syntax_trees
-            .first()?
+        syntax_trees[1]
             .compilation_unit
             .declarations
             .first()?
@@ -136,60 +102,50 @@ fn test_field_over_package() {
 }
 
 #[test]
-fn test_resolve_field_internal() {
-    let mut syntax_trees = vec![abstract_tree(parse(tokenize(
-        r#"
-        struct Test(field: Int)
-        "#,
-    )))];
-    let module_path = vec![vec![]];
-    let target_name = Moniker::Qualified(vec!["self", "field"].into_boxed_slice());
-    // env not constructed, but we know the struct scope is 1 as only two scopes exist
-    let actual = test_disambiguate!(syntax_trees, module_path, target_name, 1)
+fn test_field_access_internal() {
+    let program = r#"
+        struct Id(number: Int)
+        struct Person(id: Id) {
+            const identifier = self.id.number
+        }
+        "#;
+    test_field_access_self_id_number(program)
+}
+
+#[test]
+fn test_attribute_access_internal() {
+    let program = r#"
+        struct Id(number: Int) 
+        struct person {
+            const id = Id(3)
+            const identifier = self.id.number
+        }
+    "#;
+    test_field_access_self_id_number(program)
+}
+
+fn test_field_access_self_id_number(program: &str) {
+    let mut syntax_trees = vec![abstract_tree(parse(tokenize(program)))];
+    let module_paths = vec![vec![]];
+    let mut target_name = Name::qualified(vec!["self", "id", "number"]);
+    target_name.set_scope(2); // second struct body scope
+    let actual = *test_disambiguate!(syntax_trees, module_paths, target_name)
         .unwrap()
-        .into_field()
+        .into_instance_access()
+        .unwrap()
+        .last()
+        .unwrap()
+        .as_field()
         .unwrap();
     let expected = try_block!(
         &Field,
         syntax_trees
-            .last()?
+            .first()?
             .compilation_unit
             .declarations
             .first()?
             .as_struct()?
             .fields
-            .first()
-    )
-    .unwrap();
-    assert!(std::ptr::eq(actual, expected))
-}
-
-#[test]
-fn test_resolve_attribute_internal() {
-    let mut syntax_trees = vec![abstract_tree(parse(tokenize(
-        r#"
-        struct Test {
-            const field = 3
-        } 
-        "#,
-    )))];
-    let module_path = vec![vec![]];
-    let target_name = Moniker::Qualified(vec!["self", "field"].into_boxed_slice());
-    // env not constructed, but we know the struct scope is 1 as only two scopes exist
-    let actual = test_disambiguate!(syntax_trees, module_path, target_name, 1)
-        .unwrap()
-        .into_constant()
-        .unwrap();
-    let expected = try_block!(
-        &ConstantDeclaration,
-        syntax_trees
-            .last()?
-            .compilation_unit
-            .declarations
-            .first()?
-            .as_struct()?
-            .body
-            .attributes
             .first()
     )
     .unwrap();

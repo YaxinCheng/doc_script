@@ -2,6 +2,7 @@ use super::super::{Expression, Name};
 use super::*;
 use crate::ast::parameter::Parameter;
 use crate::ast::scoped_elements::StructInitContent;
+use crate::ast::Accessor;
 use crate::search::BreadthFirst;
 
 #[test]
@@ -88,6 +89,7 @@ fn test_struct_init_with_labelled_parameter() {
 }
 
 #[test]
+#[should_panic]
 fn test_struct_init_mixed_parameter_types() {
     test_struct_init_basic(
         "const view = View(\"red\", width: 30)\n",
@@ -219,19 +221,23 @@ fn test_method_invocation(statement: &str) {
     assert_eq!(
         expression,
         Expression::ChainingMethodInvocation {
-            receiver: Box::new(Expression::ChainingMethodInvocation {
-                receiver: Box::new(Expression::Literal {
-                    kind: LiteralKind::Integer,
-                    lexeme: "3",
-                }),
-                name: Name::simple("pow"),
-                parameters: vec![Parameter::Plain(Expression::Literal {
-                    kind: LiteralKind::Integer,
-                    lexeme: "2",
-                })],
+            receiver: Box::new(Expression::Literal {
+                kind: LiteralKind::Integer,
+                lexeme: "3",
             }),
-            name: Name::simple("abs"),
-            parameters: vec![],
+            accessors: vec![
+                Accessor {
+                    identifier: "pow",
+                    value: Some(Expression::Literal {
+                        kind: LiteralKind::Integer,
+                        lexeme: "2",
+                    })
+                },
+                Accessor {
+                    identifier: "abs",
+                    value: None
+                }
+            ]
         }
     )
 }

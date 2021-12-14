@@ -1,9 +1,8 @@
 use super::{construct_env, try_block};
 use crate::ast::{abstract_tree, Expression, StructDeclaration};
 use crate::env::name_resolution::types::Types;
-use crate::env::name_resolution::NameResolver;
-use crate::env::scope::GLOBAL_SCOPE;
-use crate::env::Environment;
+use crate::env::name_resolution::{NameResolver, TypeChecker, TypeLinker};
+use crate::env::{declaration_resolution, Environment};
 use crate::parser::parse;
 use crate::tokenizer::{tokenize, LiteralKind};
 
@@ -35,7 +34,7 @@ fn test_bool() {
 fn test_literals(kind: LiteralKind, expected: Types) {
     let expression = Expression::Literal { kind, lexeme: "" };
     let mut env = construct_env();
-    let actual = NameResolver::environment(&mut env).test_resolve_type(GLOBAL_SCOPE, &expression);
+    let actual = TypeChecker::default().test_resolve_expression(&mut env, &expression);
     assert_eq!(actual, expected)
 }
 
@@ -49,8 +48,9 @@ fn test_resolve_struct() {
     )))];
     let module_paths = vec![vec![]];
     let mut env = Environment::construct(&mut syntax_trees, &module_paths);
-    let names = env.resolve_declarations(&syntax_trees, &module_paths);
-    NameResolver::environment(&mut env).resolve_names(names);
+    let names = declaration_resolution::resolve(&mut env, &syntax_trees, &module_paths);
+    TypeLinker(&mut env).link_types(names.type_names);
+    let instance_fields = NameResolver(&mut env).resolve_names(names.expression_names);
 
     let target_expression = try_block!(
         &Expression,
@@ -76,7 +76,7 @@ fn test_resolve_struct() {
     )
     .unwrap();
     let actual =
-        NameResolver::environment(&mut env).test_resolve_type(GLOBAL_SCOPE, target_expression);
+        TypeChecker::new(instance_fields).test_resolve_expression(&mut env, target_expression);
     let expected = Types::Struct(target_struct);
     assert_eq!(actual, expected)
 }
@@ -93,8 +93,9 @@ fn test_resolve_from_block() {
     )))];
     let module_paths = vec![vec![]];
     let mut env = Environment::construct(&mut syntax_trees, &module_paths);
-    let names = env.resolve_declarations(&syntax_trees, &module_paths);
-    NameResolver::environment(&mut env).resolve_names(names);
+    let names = declaration_resolution::resolve(&mut env, &syntax_trees, &module_paths);
+    TypeLinker(&mut env).link_types(names.type_names);
+    let instance_fields = NameResolver(&mut env).resolve_names(names.expression_names);
 
     let target_block = try_block!(
         &Expression,
@@ -109,7 +110,7 @@ fn test_resolve_from_block() {
         )
     )
     .unwrap();
-    let actual = NameResolver::environment(&mut env).test_resolve_type(GLOBAL_SCOPE, target_block);
+    let actual = TypeChecker::new(instance_fields).test_resolve_expression(&mut env, target_block);
     let expected = Types::Int;
     assert_eq!(actual, expected)
 }

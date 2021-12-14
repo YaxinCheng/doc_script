@@ -1,7 +1,6 @@
 use super::super::resolve_helper::ResolveHelper;
 use crate::ast::{abstract_tree, Moniker};
 use crate::env::declaration_resolution::{DeclarationAdder, Importer};
-use crate::env::scope::{ScopeId, GLOBAL_SCOPE};
 use crate::env::Environment;
 use crate::parser::parse;
 use crate::tokenizer::tokenize;
@@ -11,49 +10,6 @@ macro_rules! prepare_env {
         DeclarationAdder(&mut $env).add_from($syntax_trees, $module_paths);
         Importer(&mut $env).import_from($syntax_trees, $module_paths);
     };
-}
-
-#[test]
-fn test_resolve_name_at_current_scope() {
-    test_resolve_struct_empty("struct Empty\n", GLOBAL_SCOPE)
-}
-
-#[test]
-fn test_resolve_from_struct_body() {
-    test_resolve_struct_empty("struct Empty {\n const shared = Empty()\n }\n", 1)
-}
-
-#[test]
-fn test_resolve_from_block() {
-    test_resolve_struct_empty("struct Empty {\n const shared = { Empty() }\n }\n", 2)
-}
-
-#[test]
-fn test_resolve_from_struct_init() {
-    test_resolve_struct_empty("struct Empty {\n const shared = View { Empty() }\n }\n", 2)
-}
-
-fn test_resolve_struct_empty(program: &str, source_scope: ScopeId) {
-    let module_path: Vec<Vec<&str>> = vec![vec![]];
-    let mut syntax_trees = vec![abstract_tree(parse(tokenize(program)))];
-    let mut env = Environment::construct(&mut syntax_trees, &module_path);
-    prepare_env!(env, &syntax_trees, &module_path);
-    let helper = ResolveHelper(&env);
-    let (resolved, scope) = helper
-        .resolve(source_scope, &Moniker::Simple("Empty"))
-        .expect("Failed to resolve");
-    assert_eq!(scope, GLOBAL_SCOPE);
-    let actual = resolved.into_struct().expect("Not struct");
-    let expected = syntax_trees
-        .last()
-        .unwrap()
-        .compilation_unit
-        .declarations
-        .last()
-        .unwrap()
-        .as_struct()
-        .unwrap();
-    assert!(std::ptr::eq(actual, expected))
 }
 
 #[test]

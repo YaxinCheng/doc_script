@@ -4,8 +4,7 @@ use crate::parser::{Node, NodeKind};
 use crate::search::BreadthFirst;
 use scope_macro::Scoped;
 
-#[derive(Scoped)]
-#[cfg_attr(test, derive(Debug, Eq, PartialEq))]
+#[derive(Scoped, Debug, Eq, PartialEq)]
 pub struct Block<'a> {
     pub statements: Vec<Statement<'a>>,
     scope: Option<ScopeId>,
@@ -21,8 +20,7 @@ impl<'a> FromIterator<Statement<'a>> for Block<'a> {
     }
 }
 
-#[derive(Scoped)]
-#[cfg_attr(test, derive(Debug, Eq, PartialEq))]
+#[derive(Scoped, Debug, Eq, PartialEq)]
 pub struct StructInitContent<'a> {
     pub expressions: Vec<Expression<'a>>,
     scope: Option<ScopeId>,
@@ -56,8 +54,7 @@ impl<'a> From<Vec<Expression<'a>>> for StructInitContent<'a> {
     }
 }
 
-#[derive(Default, Scoped)]
-#[cfg_attr(test, derive(Debug, Eq, PartialEq))]
+#[derive(Default, Scoped, Debug, Eq, PartialEq)]
 pub struct StructBody<'a> {
     pub attributes: Vec<ConstantDeclaration<'a>>,
     scope: Option<ScopeId>,

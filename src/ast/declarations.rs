@@ -5,7 +5,7 @@ use crate::search::BreadthFirst;
 #[cfg(debug_assertions)]
 use crate::tokenizer::{Token, TokenKind};
 
-#[cfg_attr(test, derive(Debug, Eq, PartialEq))]
+#[derive(Debug, Eq, PartialEq)]
 pub struct ConstantDeclaration<'a> {
     pub name: &'a str,
     pub value: Expression<'a>,
@@ -29,7 +29,7 @@ impl<'a> From<Node<'a>> for ConstantDeclaration<'a> {
     }
 }
 
-#[cfg_attr(test, derive(Debug, Eq, PartialEq))]
+#[derive(Debug, Eq, PartialEq)]
 pub struct StructDeclaration<'a> {
     pub name: &'a str,
     pub fields: Vec<Field<'a>>,
@@ -82,7 +82,12 @@ impl<'a> StructDeclaration<'a> {
         let fields = children.pop().expect("Expect Fields");
         let fields = BreadthFirst::find(
             fields,
-            |node| matches!(node.kind(), Some(NodeKind::Field)),
+            |node| {
+                matches!(
+                    node.kind(),
+                    Some(NodeKind::PlainField | NodeKind::DefaultField)
+                )
+            },
             |node| node.children().unwrap_or_default(),
         )
         .map(Field::from)

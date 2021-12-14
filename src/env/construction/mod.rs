@@ -13,7 +13,7 @@ pub(in crate::env) use module_operations::ModuleAdder;
 use scope_operations::ScopeGenerator;
 
 impl<'ast, 'a> Environment<'ast, 'a> {
-    pub fn construct(
+    pub(in crate::env) fn construct(
         syntax_trees: &mut [AbstractSyntaxTree<'a>],
         module_paths: &[Vec<&'a str>],
     ) -> Environment<'ast, 'a> {

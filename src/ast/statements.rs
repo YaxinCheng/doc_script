@@ -3,7 +3,7 @@ use super::Expression;
 use super::{Node, NodeKind};
 use crate::ast::declarations::{ConstantDeclaration, StructDeclaration};
 
-#[cfg_attr(test, derive(Debug, Eq, PartialEq))]
+#[derive(Debug, Eq, PartialEq)]
 pub enum Statement<'a> {
     Expression(Expression<'a>),
     ConstantDeclaration(ConstantDeclaration<'a>),
