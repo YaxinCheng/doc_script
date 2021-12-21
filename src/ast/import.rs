@@ -51,6 +51,13 @@ impl<'a> From<Node<'a>> for Import<'a> {
                 .collect();
                 Import::Multiple { prefix, suffices }
             }
+            Node::Internal {
+                kind: NodeKind::ImportDeclaration,
+                mut children,
+            } => children
+                .pop()
+                .map(Self::from)
+                .expect("ImportDeclaration should have one child"),
             kind => unreachable!("Unexpected kind: {:?}", kind),
         }
     }

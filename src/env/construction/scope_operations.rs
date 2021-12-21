@@ -113,9 +113,6 @@ impl<'ast, 'a, 'env> ScopeGenerator<'ast, 'a, 'env> {
             Statement::ConstantDeclaration(constant) => {
                 self.generate_for_constant(constant, scope_id)
             }
-            Statement::StructDeclaration(r#struct) => {
-                self.generate_for_struct_declaration(r#struct, scope_id)
-            }
         };
     }
 

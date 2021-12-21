@@ -36,40 +36,48 @@ impl<'a> From<Node<'a>> for Declaration<'a> {
     fn from(node: Node<'a>) -> Self {
         match node {
             Node::Internal {
-                kind: NodeKind::ImportDeclaration,
-                mut children,
-            } => children
-                .pop()
-                .map(Import::from)
-                .map(Declaration::Import)
-                .expect("ImportDeclaration should have one child"),
-            Node::Internal {
-                kind: NodeKind::ConstantDeclarationStatement,
-                mut children,
-            } => children
-                .pop()
-                .map(ConstantDeclaration::from)
-                .map(Declaration::Constant)
-                .expect("ConstantDeclaration should have one child"),
-            Node::Internal {
-                kind: NodeKind::StructDeclarationStatement,
-                mut children,
-            } => children
-                .pop()
-                .map(StructDeclaration::from)
-                .map(Declaration::Struct)
-                .expect("StructDeclaration should have one child"),
-            Node::Internal {
-                kind: NodeKind::DeclarationStatement,
+                kind: NodeKind::ImportDeclarationStatement,
                 mut children,
             } => {
                 let _end_of_line = children.pop();
                 debug_check! { _end_of_line, Some(Node::Internal { kind: NodeKind::EOL, .. }) }
                 children
                     .pop()
-                    .map(Declaration::from)
-                    .expect("Declaration should have one child")
+                    .map(Import::from)
+                    .map(Declaration::Import)
+                    .expect("ImportDeclaration should have one child")
             }
+            Node::Internal {
+                kind: NodeKind::ConstantDeclarationStatement,
+                mut children,
+            } => {
+                let _end_of_line = children.pop();
+                debug_check! { _end_of_line, Some(Node::Internal { kind: NodeKind::EOL, .. }) }
+                children
+                    .pop()
+                    .map(ConstantDeclaration::from)
+                    .map(Declaration::Constant)
+                    .expect("ConstantDeclaration should have one child")
+            }
+            Node::Internal {
+                kind: NodeKind::StructDeclarationStatement,
+                mut children,
+            } => {
+                let _end_of_line = children.pop();
+                debug_check! { _end_of_line, Some(Node::Internal { kind: NodeKind::EOL, .. }) }
+                children
+                    .pop()
+                    .map(StructDeclaration::from)
+                    .map(Declaration::Struct)
+                    .expect("StructDeclaration should have one child")
+            }
+            Node::Internal {
+                kind: NodeKind::DeclarationStatement,
+                mut children,
+            } => children
+                .pop()
+                .map(Declaration::from)
+                .expect("Declaration should have one child"),
             kind => unreachable!("Unexpected kind: {:?}", kind),
         }
     }

@@ -149,9 +149,6 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
             Statement::ConstantDeclaration(constant) => {
                 self.add_constant(false, constant, scope_id, seen_names)
             }
-            Statement::StructDeclaration(r#struct) => {
-                self.add_struct_declaration(r#struct, scope_id, seen_names)
-            }
         };
     }
 
