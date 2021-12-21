@@ -1,5 +1,3 @@
-// mod disambiguate;
-mod address_hash;
 mod resolution;
 mod resolve_helper;
 mod resolved;
@@ -9,12 +7,14 @@ mod type_checking;
 mod type_linker;
 mod typed_element;
 pub mod types;
+pub use type_checking::type_resolver;
 
 use super::declaration_resolution::UnresolvedNames;
 use super::Environment;
 use crate::ast::AbstractSyntaxTree;
 use resolution::NameResolver;
 pub use resolved::Resolved;
+pub use typed_element::TypedElement;
 use type_checking::TypeChecker;
 use type_linker::TypeLinker;
 

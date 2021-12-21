@@ -52,7 +52,10 @@ fn test_resolve_from_wildcard_import(programs: [&'static str; 2]) {
         .map(parse)
         .map(abstract_tree)
         .collect::<Vec<_>>();
-    let mut env = Environment::construct(&mut syntax_trees, &module_path);
+    let mut env = Environment::builder()
+        .add_modules(&module_path)
+        .generate_scopes(&mut syntax_trees)
+        .build();
     prepare_env!(env, &syntax_trees, &module_path);
     let helper = ResolveHelper(&env);
     let source_scope_id = env.find_module(&module_path[1]).unwrap();
@@ -85,7 +88,10 @@ fn test_unresolvable_name() {
         "#,
         ))),
     ];
-    let mut env = Environment::construct(&mut syntax_trees, &module_path);
+    let mut env = Environment::builder()
+        .add_modules(&module_path)
+        .generate_scopes(&mut syntax_trees)
+        .build();
     prepare_env!(env, &syntax_trees, &module_path);
     let helper = ResolveHelper(&env);
     let source_scope_id = env.find_module(&["test", "target"]).unwrap();
@@ -105,7 +111,10 @@ fn test_shaded_name() {
         "#,
         ))),
     ];
-    let mut env = Environment::construct(&mut syntax_trees, &module_path);
+    let mut env = Environment::builder()
+        .add_modules(&module_path)
+        .generate_scopes(&mut syntax_trees)
+        .build();
     prepare_env!(env, &syntax_trees, &module_path);
     let helper = ResolveHelper(&env);
     let source_scope_id = env.find_module(&["test", "target"]).unwrap();

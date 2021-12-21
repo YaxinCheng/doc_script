@@ -1,8 +1,5 @@
-use super::super::{TypeChecker, TypeLinker};
 use super::try_block;
 use crate::ast::{abstract_tree, Field, Name};
-use crate::env::declaration_resolution;
-use crate::env::name_resolution::NameResolver;
 use crate::env::scope::{Scoped, GLOBAL_SCOPE};
 use crate::env::Environment;
 use crate::parser::parse;
@@ -14,11 +11,11 @@ macro_rules! test_disambiguate {
     }};
 
     ($syntax_trees: expr, $module_paths: expr, $name: expr, $scope: expr) => {{
-        let mut env = Environment::construct(&mut $syntax_trees, &$module_paths);
-        let names = declaration_resolution::resolve(&mut env, &$syntax_trees, &$module_paths);
-        TypeLinker(&mut env).link_types(names.type_names);
-        let instance_fields = NameResolver(&mut env).resolve_names(names.expression_names);
-        TypeChecker::new(instance_fields).test_resolve_from_name(&mut env, &$name);
+        let mut env = Environment::builder()
+            .add_modules(&$module_paths)
+            .generate_scopes(&mut $syntax_trees)
+            .resolve_names(&$syntax_trees)
+            .build();
         env.resolved_names.remove(&$name)
     }};
 }

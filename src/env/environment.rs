@@ -1,20 +1,26 @@
 pub use super::name_resolution::Resolved;
 use super::scope::{Scope, ScopeId, GLOBAL_SCOPE};
 use crate::ast::Name;
+use crate::env::EnvironmentBuilder;
 use std::collections::HashMap;
 
-#[derive(Default)]
 pub struct Environment<'ast, 'a> {
     scopes: Vec<Scope<'ast, 'a>>,
     pub(in crate::env) resolved_names: HashMap<Name<'a>, Resolved<'ast, 'a>>,
 }
 
-impl<'ast, 'a> Environment<'ast, 'a> {
-    pub(in crate::env) fn new() -> Self {
+impl<'ast, 'a> Default for Environment<'ast, 'a> {
+    fn default() -> Self {
         Environment {
             scopes: vec![Scope::global()],
-            ..Default::default()
+            resolved_names: HashMap::new(),
         }
+    }
+}
+
+impl<'ast, 'a> Environment<'ast, 'a> {
+    pub fn builder() -> EnvironmentBuilder<'ast, 'a> {
+        EnvironmentBuilder::default()
     }
 
     pub fn find_module<'b>(&self, names: &[&'b str]) -> Option<ScopeId> {

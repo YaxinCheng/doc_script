@@ -40,7 +40,10 @@ fn test_add_struct_declaration() {
         "struct Text {\n const b = x\n }\n",
     )))];
     let module_path = prepare_module_path();
-    let mut env = Environment::construct(&mut syntax_trees, &module_path);
+    let mut env = Environment::builder()
+        .add_modules(&module_path)
+        .generate_scopes(&mut syntax_trees)
+        .build();
     let unresolved_names = kick_off(&mut env, syntax_trees.last().unwrap());
     assert_eq!(unresolved_names, vec![&Moniker::Simple("x")]);
     let expected = syntax_trees

@@ -8,7 +8,10 @@ use crate::tokenizer::tokenize;
 
 macro_rules! test_resolve {
     ($syntax_trees: ident, $module_paths: ident) => {{
-        let mut env = Environment::construct(&mut $syntax_trees, &$module_paths);
+        let mut env = Environment::builder()
+            .add_modules(&$module_paths)
+            .generate_scopes(&mut $syntax_trees)
+            .build();
         let names = declaration_resolution::resolve(&mut env, &$syntax_trees, &$module_paths);
         TypeLinker(&mut env).link_types(names.type_names);
         NameResolver(&mut env).resolve_names(names.expression_names);

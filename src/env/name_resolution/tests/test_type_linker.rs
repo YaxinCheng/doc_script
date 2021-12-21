@@ -52,7 +52,10 @@ fn test_call_on_constant() {
 fn test_type_linking(program: &str, source_scope: ScopeId) {
     let module_path: Vec<Vec<&str>> = vec![vec![]];
     let mut syntax_trees = vec![abstract_tree(parse(tokenize(program)))];
-    let mut env = Environment::construct(&mut syntax_trees, &module_path);
+    let mut env = Environment::builder()
+        .add_modules(&module_path)
+        .generate_scopes(&mut syntax_trees)
+        .build();
     declaration_resolution::resolve(&mut env, &syntax_trees, &module_path);
     let mut name = Name::simple("Empty");
     name.set_scope(source_scope);

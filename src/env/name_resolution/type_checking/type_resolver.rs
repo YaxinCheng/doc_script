@@ -4,7 +4,7 @@ use super::super::Resolved;
 use crate::ast::Name;
 use crate::tokenizer::LiteralKind;
 
-pub(in crate::env::name_resolution) fn resolve_type_name<'ast, 'a>(
+pub(in crate::env) fn resolve_type_name<'ast, 'a>(
     environment: &Environment<'ast, 'a>,
     name: &'ast Name<'a>,
 ) -> Option<Types<'ast, 'a>> {

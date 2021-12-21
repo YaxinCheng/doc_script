@@ -47,7 +47,10 @@ fn test_resolve_struct() {
         "#,
     )))];
     let module_paths = vec![vec![]];
-    let mut env = Environment::construct(&mut syntax_trees, &module_paths);
+    let mut env = Environment::builder()
+        .add_modules(&module_paths)
+        .generate_scopes(&mut syntax_trees)
+        .build();
     let names = declaration_resolution::resolve(&mut env, &syntax_trees, &module_paths);
     TypeLinker(&mut env).link_types(names.type_names);
     let instance_fields = NameResolver(&mut env).resolve_names(names.expression_names);
@@ -92,7 +95,10 @@ fn test_resolve_from_block() {
         "#,
     )))];
     let module_paths = vec![vec![]];
-    let mut env = Environment::construct(&mut syntax_trees, &module_paths);
+    let mut env = Environment::builder()
+        .add_modules(&module_paths)
+        .generate_scopes(&mut syntax_trees)
+        .build();
     let names = declaration_resolution::resolve(&mut env, &syntax_trees, &module_paths);
     TypeLinker(&mut env).link_types(names.type_names);
     let instance_fields = NameResolver(&mut env).resolve_names(names.expression_names);

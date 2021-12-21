@@ -5,9 +5,7 @@ use crate::ast::{
     StructDeclaration,
 };
 
-pub(in crate::env::construction) struct ScopeGenerator<'ast, 'a, 'env>(
-    pub &'env mut Environment<'ast, 'a>,
-);
+pub(in crate::env) struct ScopeGenerator<'ast, 'a, 'env>(pub &'env mut Environment<'ast, 'a>);
 
 impl<'ast, 'a, 'env> ScopeGenerator<'ast, 'a, 'env> {
     pub fn generate(
@@ -130,7 +128,8 @@ impl<'ast, 'a, 'env> ScopeGenerator<'ast, 'a, 'env> {
         for field in r#struct.fields.iter_mut() {
             field.field_type.0.set_scope(body_scope);
             if let Some(default_value) = field.default_value.as_mut() {
-                self.generate_for_expression(default_value, body_scope);
+                // field default value is not in the body scope
+                self.generate_for_expression(default_value, scope_id);
             }
         }
         for declaration in r#struct.body.attributes.iter_mut() {

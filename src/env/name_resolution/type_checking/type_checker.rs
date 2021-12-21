@@ -7,9 +7,13 @@ use crate::ast::{
     AbstractSyntaxTree, Accessor, Block, Declaration, Expression, Field, Name, Parameter,
     Statement, StructDeclaration, StructInitContent,
 };
+use crate::env::address_hash::hash;
 use crate::env::environment::Resolved;
 use crate::env::Environment;
 use std::collections::HashMap;
+
+hash!(Field);
+hash!(Expression);
 
 #[derive(Default)]
 pub(in crate::env) struct TypeChecker<'ast, 'a> {
@@ -89,8 +93,8 @@ impl<'ast, 'a> TypeChecker<'ast, 'a> {
         self.resolve_from_resolved_names(environment, name)
             .or_else(|| self.resolve_from_instance_fields(environment, name))
             .unwrap_or_else(|| {
-                unreachable!(
-                    "A name is either already resolved or an instance field: {}",
+                panic!(
+                    "Unexpected name `{}`. This is likely a cycle reference",
                     name
                 )
             })
@@ -157,8 +161,9 @@ impl<'ast, 'a> TypeChecker<'ast, 'a> {
     ) -> Types<'ast, 'a> {
         block
             .statements
-            .last()
+            .iter()
             .map(|statement| self.resolve_statement(environment, statement))
+            .last()
             .unwrap_or(Types::Void)
     }
 
@@ -167,7 +172,7 @@ impl<'ast, 'a> TypeChecker<'ast, 'a> {
         environment: &mut Environment<'ast, 'a>,
         name: &'ast Name<'a>,
         parameters: &'ast [Parameter<'a>],
-        init_content: &Option<StructInitContent<'a>>,
+        init_content: &'ast Option<StructInitContent<'a>>,
     ) -> Types<'ast, 'a> {
         let struct_type = type_resolver::resolve_type_name(environment, name)
             .unwrap_or_else(|| panic!("type name `{}` not linked", name));
@@ -183,11 +188,22 @@ impl<'ast, 'a> TypeChecker<'ast, 'a> {
         StructInitChecker::with_fields(fields, field_types)
             .check_parameters(parameters, parameter_types)
             .expect("Failed struct field type check");
-        self.resolve_init_content(init_content);
+        init_content
+            .iter()
+            .for_each(|init_content| self.resolve_init_content(environment, init_content));
         struct_type
     }
 
-    fn resolve_init_content(&mut self, _init_content: &Option<StructInitContent<'a>>) {}
+    fn resolve_init_content(
+        &mut self,
+        environment: &mut Environment<'ast, 'a>,
+        init_content: &'ast StructInitContent<'a>,
+    ) {
+        for expression in &init_content.expressions {
+            self.resolve_expression(environment, expression);
+            // TODO: check if type is compatible
+        }
+    }
 
     fn resolve_chaining_method(
         &mut self,
@@ -282,13 +298,5 @@ impl<'ast, 'a> TypeChecker<'ast, 'a> {
         expression: &'ast Expression<'a>,
     ) -> Types<'ast, 'a> {
         self.resolve_expression(environment, expression)
-    }
-
-    pub fn test_resolve_from_name(
-        &mut self,
-        environment: &mut Environment<'ast, 'a>,
-        name: &'ast Name<'a>,
-    ) -> Types<'ast, 'a> {
-        self.resolve_from_constant_use_name(environment, name)
     }
 }

@@ -1,3 +1,4 @@
+mod const_field_hierarchy_tests;
 mod test_chaining_method;
 mod test_disambiguate;
 mod test_name_resolution;
