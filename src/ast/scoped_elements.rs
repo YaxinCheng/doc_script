@@ -3,6 +3,7 @@ use crate::env::scope::*;
 use crate::parser::{Node, NodeKind};
 use crate::search::BreadthFirst;
 use scope_macro::Scoped;
+use std::collections::VecDeque;
 
 #[derive(Scoped, Debug, Eq, PartialEq)]
 pub struct Block<'a> {
@@ -12,9 +13,26 @@ pub struct Block<'a> {
 
 impl<'a> FromIterator<Statement<'a>> for Block<'a> {
     fn from_iter<T: IntoIterator<Item = Statement<'a>>>(iter: T) -> Self {
-        let statements = iter.into_iter().collect();
+        let mut statement_stack = iter.into_iter().collect::<Vec<_>>();
+        let mut statements = VecDeque::new();
+        while let Some(statement) = statement_stack.pop() {
+            match statement {
+                expr_stmt @ Statement::Expression(_) => statements.push_front(expr_stmt),
+                const_stmt @ Statement::ConstantDeclaration(_) => {
+                    if !statements.is_empty() {
+                        let block = Block {
+                            statements: Vec::from(statements),
+                            scope: None,
+                        };
+                        statements = VecDeque::new();
+                        statements.push_front(Statement::Expression(Expression::Block(block)));
+                    }
+                    statements.push_front(const_stmt);
+                }
+            }
+        }
         Self {
-            statements,
+            statements: Vec::from(statements),
             scope: None,
         }
     }

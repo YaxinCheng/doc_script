@@ -2,8 +2,11 @@ use super::debug_check;
 use super::Expression;
 use super::{Node, NodeKind};
 use crate::ast::declarations::ConstantDeclaration;
+#[cfg(test)]
+use enum_as_inner::EnumAsInner;
 
 #[derive(Debug, Eq, PartialEq)]
+#[cfg_attr(test, derive(EnumAsInner))]
 pub enum Statement<'a> {
     Expression(Expression<'a>),
     ConstantDeclaration(ConstantDeclaration<'a>),
