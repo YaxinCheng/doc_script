@@ -9,6 +9,7 @@ mod scoped_elements;
 mod statements;
 #[cfg(test)]
 mod tests;
+mod weeder;
 
 use crate::parser::{Node, NodeKind};
 

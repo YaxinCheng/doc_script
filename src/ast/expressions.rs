@@ -1,3 +1,4 @@
+use super::weeder;
 use super::{check_unpack, debug_check};
 use super::{Name, Parameter, Statement};
 use super::{Node, NodeKind};
@@ -232,7 +233,8 @@ impl<'a> Expression<'a> {
                 |node| node.children().unwrap_or_default(),
             )
             .map(Parameter::from)
-            .collect();
+            .collect::<Vec<_>>();
+            weeder::parameters::weed(&parameters);
             let _open_bracket = nodes.pop();
             debug_check! { _open_bracket, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "(" })) };
             parameters

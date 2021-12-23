@@ -1,4 +1,4 @@
-use super::{debug_check, Expression, Field, Node, NodeKind};
+use super::{debug_check, weeder, Expression, Field, Node, NodeKind};
 use crate::ast::check_unpack;
 use crate::ast::scoped_elements::StructBody;
 use crate::search::BreadthFirst;
@@ -92,6 +92,7 @@ impl<'a> StructDeclaration<'a> {
         )
         .map(Field::from)
         .collect::<Vec<_>>();
+        weeder::fields::weed(&fields);
         let _open_bracket = children.pop();
         debug_check! { _open_bracket, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "(" })) };
         fields
