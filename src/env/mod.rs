@@ -8,8 +8,8 @@ pub mod scope;
 mod address_hash;
 mod env_builder;
 
-pub use env_builder::EnvironmentBuilder;
 pub use environment::Environment;
+pub type EnvironmentBuilder<'ast, 'a> = env_builder::EnvironmentBuilder<'ast, 'a, 0>;
 
 #[cfg(test)]
 pub(in crate::env) fn construct_env<'ast, 'a>() -> Environment<'ast, 'a> {

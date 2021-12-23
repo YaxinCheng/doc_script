@@ -20,7 +20,7 @@ impl<'ast, 'a> Default for Environment<'ast, 'a> {
 
 impl<'ast, 'a> Environment<'ast, 'a> {
     pub fn builder() -> EnvironmentBuilder<'ast, 'a> {
-        EnvironmentBuilder::default()
+        EnvironmentBuilder::new()
     }
 
     pub fn find_module<'b>(&self, names: &[&'b str]) -> Option<ScopeId> {
