@@ -1,4 +1,5 @@
 use super::super::scope::*;
+use super::subdivide_struct_init;
 use super::Environment;
 use crate::ast::{
     AbstractSyntaxTree, ConstantDeclaration, Declaration, Expression, Parameter, Statement,
@@ -47,6 +48,7 @@ impl<'ast, 'a, 'env> ScopeGenerator<'ast, 'a, 'env> {
     }
 
     fn generate_for_expression(&mut self, expression: &mut Expression<'a>, scope_id: ScopeId) {
+        subdivide_struct_init::subdivide(self.0, expression);
         match expression {
             Expression::ConstUse(constant_name) => {
                 constant_name.set_scope(scope_id);

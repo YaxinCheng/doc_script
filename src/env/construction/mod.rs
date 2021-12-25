@@ -1,5 +1,6 @@
 mod module_operations;
 mod scope_operations;
+mod subdivide_struct_init;
 #[cfg(test)]
 mod tests;
 

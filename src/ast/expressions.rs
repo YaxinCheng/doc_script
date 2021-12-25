@@ -18,6 +18,16 @@ pub struct Accessor<'a> {
 #[derive(Debug, Eq, PartialEq)]
 pub enum Expression<'a> {
     Block(Block<'a>),
+    /// StructInit was created as a combination of two cases,
+    /// which will later be separated (see /src/env/construction/subdivide_struct_init.rs)
+    ///
+    /// Briefly, during ast creation, there is no way to distinguish:
+    /// 1. module.submodule.Struct()
+    /// 2. module.constant.field()
+    ///
+    /// Therefore, the distinguish work is left to when environment is initially constructed.
+    ///
+    /// After the subdivision, StructInit only keeps the case of creating through constructor
     StructInit {
         name: Name<'a>,
         parameters: Vec<Parameter<'a>>,
