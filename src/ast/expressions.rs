@@ -2,7 +2,8 @@ use super::weeder;
 use super::{check_unpack, debug_check};
 use super::{Name, Parameter, Statement};
 use super::{Node, NodeKind};
-use crate::ast::scoped_elements::{Block, StructInitContent};
+use crate::ast::scoped_elements::Block;
+use crate::ast::StructInitContent;
 use crate::search::{BreadthFirst, DepthFirst};
 use crate::tokenizer::{LiteralKind, Token, TokenKind};
 #[cfg(test)]
@@ -32,6 +33,10 @@ pub enum Expression<'a> {
         accessors: Vec<Accessor<'a>>,
     },
     ConstUse(Name<'a>),
+    FieldAccess {
+        receiver: Box<Expression<'a>>,
+        field_names: Vec<&'a str>,
+    },
 }
 
 impl<'a> From<Node<'a>> for Expression<'a> {
@@ -42,6 +47,7 @@ impl<'a> From<Node<'a>> for Expression<'a> {
             Some(NodeKind::StructInitExpression) => Self::struct_init(node),
             Some(NodeKind::ChainingMethodInvocation) => Self::chaining_method_invocation(node),
             Some(NodeKind::ConstantUse) => Self::const_use(node),
+            Some(NodeKind::FieldAccess) => Self::field_access(node),
             Some(NodeKind::Expression | NodeKind::ChainableExpression) => {
                 Self::expression_recursive(node)
             }
@@ -204,7 +210,7 @@ impl<'a> Expression<'a> {
             return None;
         }
         let init_content = nodes.pop().map(StructInitContent::from)?;
-        match init_content.expressions.is_empty() {
+        match init_content.0.is_empty() {
             true => None,
             false => Some(init_content),
         }
@@ -240,6 +246,37 @@ impl<'a> Expression<'a> {
             parameters
         } else {
             vec![]
+        }
+    }
+
+    fn field_access(node: Node<'a>) -> Expression<'a> {
+        let mut children = check_unpack!(node, NodeKind::FieldAccess);
+        let name = children.pop().expect("FieldAccess ends with Name");
+        let field_names = BreadthFirst::find(
+            name,
+            |node| {
+                matches!(
+                    node,
+                    Node::Leaf(Token {
+                        kind: TokenKind::Identifier,
+                        ..
+                    })
+                )
+            },
+            |node| node.children().unwrap_or_default(),
+        )
+        .filter_map(|node| node.token())
+        .map(|token| token.lexeme)
+        .collect();
+        let _dot = children.pop();
+        debug_check! { _dot, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "." })) };
+        let receiver = children
+            .pop()
+            .map(Expression::from)
+            .expect("FieldAccess should have an receiver");
+        Expression::FieldAccess {
+            receiver: Box::new(receiver),
+            field_names,
         }
     }
 }

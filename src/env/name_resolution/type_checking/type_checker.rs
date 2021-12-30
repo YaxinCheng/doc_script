@@ -79,6 +79,10 @@ impl<'ast, 'a> TypeChecker<'ast, 'a> {
                 receiver,
                 accessors,
             } => self.resolve_chaining_method(environment, receiver, accessors),
+            Expression::FieldAccess {
+                receiver,
+                field_names,
+            } => self.resolve_field_access(environment, receiver, field_names),
         };
         let existing = self.resolved_expressions.insert(expression, resolve_type);
         debug_assert!(existing.is_none(), "Expression resolved twice");
@@ -199,7 +203,7 @@ impl<'ast, 'a> TypeChecker<'ast, 'a> {
         environment: &mut Environment<'ast, 'a>,
         init_content: &'ast StructInitContent<'a>,
     ) {
-        for expression in &init_content.expressions {
+        for expression in &init_content.0 {
             self.resolve_expression(environment, expression);
             // TODO: check if type is compatible
         }
@@ -287,6 +291,26 @@ impl<'ast, 'a> TypeChecker<'ast, 'a> {
             field.name
         );
         expected_type
+    }
+
+    fn resolve_field_access(
+        &mut self,
+        environment: &mut Environment<'ast, 'a>,
+        receiver: &'ast Expression<'a>,
+        name: &'ast [&'a str],
+    ) -> Types<'ast, 'a> {
+        let receiver_type = self.resolve_expression(environment, receiver);
+        let mut last_type = receiver_type;
+        for name in name {
+            last_type = match last_type.access(name) {
+                Some(TypedElement::Field(field)) => self.resolve_field(environment, field),
+                Some(TypedElement::Constant(constant)) => {
+                    self.resolve_expression(environment, &constant.value)
+                }
+                None => panic!("{:?} has no field or attribute named {}", last_type, name),
+            };
+        }
+        last_type
     }
 }
 

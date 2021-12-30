@@ -1,8 +1,7 @@
 use super::super::{Expression, Name};
 use super::*;
 use crate::ast::parameter::Parameter;
-use crate::ast::scoped_elements::StructInitContent;
-use crate::ast::Accessor;
+use crate::ast::{Accessor, StructInitContent};
 use crate::search::BreadthFirst;
 
 #[test]
@@ -255,6 +254,46 @@ fn test_const_use_simple() {
     let program = "const text = book\n";
     let expression = find_first_expression(program).expect("Expression expected");
     let expected = Expression::ConstUse(Name::simple("book"));
+    assert_eq!(expression, expected)
+}
+
+#[test]
+fn test_field_access_from_block() {
+    use crate::ast::Statement;
+    let program = r#"
+    const a = {
+        3
+    }.field
+    "#;
+    let expression = find_first_expression(program).expect("Expression expected");
+    let expected = Expression::FieldAccess {
+        receiver: Box::new(Expression::Block(
+            vec![Statement::Expression(Expression::Literal {
+                kind: LiteralKind::Integer,
+                lexeme: "3",
+            })]
+            .into(),
+        )),
+        field_names: vec!["field"],
+    };
+    assert_eq!(expression, expected)
+}
+
+#[test]
+fn test_field_access_from_struct_init() {
+    let program = r#"
+    const a = Empty {
+    }.field
+    "#;
+    let expression = find_first_expression(program).expect("Expression expected");
+    let expected = Expression::FieldAccess {
+        receiver: Box::new(Expression::StructInit {
+            name: Name::simple("Empty"),
+            parameters: vec![],
+            init_content: None,
+        }),
+        field_names: vec!["field"],
+    };
     assert_eq!(expression, expected)
 }
 

@@ -30,14 +30,7 @@ fn test_scope_for_struct_init_content() {
     ScopeGenerator(&mut env).generate(&mut ast, &module_paths);
     let constant = constants(ast.pop().unwrap()).pop().unwrap();
     let mut init_content = constant.value.into_struct_init().unwrap().2.unwrap();
-    assert_eq!(init_content.scope(), 1);
-    let text = init_content
-        .expressions
-        .pop()
-        .unwrap()
-        .into_struct_init()
-        .unwrap()
-        .0;
+    let text = init_content.0.pop().unwrap().into_struct_init().unwrap().0;
     assert_eq!(text.scope(), 1);
 }
 

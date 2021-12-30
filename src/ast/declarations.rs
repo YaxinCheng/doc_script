@@ -98,3 +98,28 @@ impl<'a> StructDeclaration<'a> {
         fields
     }
 }
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct StructInitContent<'a>(pub Vec<Expression<'a>>);
+
+impl<'a> From<Node<'a>> for StructInitContent<'a> {
+    fn from(node: Node<'a>) -> Self {
+        let children = check_unpack!(node, NodeKind::StructInitContent);
+        let mut expressions = BreadthFirst::find_from(
+            children,
+            |node| matches!(node.kind(), Some(NodeKind::Expression)),
+            |node| node.children().unwrap_or_default(),
+        )
+        .map(Expression::from)
+        .collect::<Vec<_>>();
+        expressions.reverse();
+        StructInitContent(expressions)
+    }
+}
+
+#[cfg(test)]
+impl<'a> From<Vec<Expression<'a>>> for StructInitContent<'a> {
+    fn from(expressions: Vec<Expression<'a>>) -> Self {
+        Self(expressions)
+    }
+}

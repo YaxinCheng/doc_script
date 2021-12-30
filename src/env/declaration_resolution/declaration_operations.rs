@@ -90,9 +90,8 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
                     .iter()
                     .for_each(|parameter| self.add_parameter(parameter, scope_id, seen_names));
                 if let Some(init_content) = init_content {
-                    let body_scope_id = init_content.scope();
-                    init_content.expressions.iter().for_each(|expression| {
-                        self.add_expression(expression, body_scope_id, seen_names)
+                    init_content.0.iter().for_each(|expression| {
+                        self.add_expression(expression, scope_id, seen_names)
                     });
                 }
             }
@@ -117,6 +116,9 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
                     .statements
                     .iter()
                     .for_each(|statement| self.add_statement(statement, body_scope_id, seen_names))
+            }
+            Expression::FieldAccess { receiver, .. } => {
+                self.add_expression(receiver, scope_id, seen_names);
             }
         }
     }

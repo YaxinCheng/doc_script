@@ -63,8 +63,7 @@ impl<'ast, 'a, 'env> ScopeGenerator<'ast, 'a, 'env> {
                     .for_each(|parameter| self.generate_for_parameter(parameter, scope_id));
                 if let Some(init_content) = init_content {
                     let body_scope_id = self.0.add_child_scope(scope_id).id;
-                    init_content.set_scope(body_scope_id);
-                    init_content.expressions.iter_mut().for_each(|expression| {
+                    init_content.0.iter_mut().for_each(|expression| {
                         self.generate_for_expression(expression, body_scope_id)
                     });
                 }
@@ -91,6 +90,9 @@ impl<'ast, 'a, 'env> ScopeGenerator<'ast, 'a, 'env> {
                     .statements
                     .iter_mut()
                     .for_each(|statement| self.generate_for_statement(statement, body_scope_id))
+            }
+            Expression::FieldAccess { receiver, .. } => {
+                self.generate_for_expression(receiver, scope_id);
             }
         }
     }

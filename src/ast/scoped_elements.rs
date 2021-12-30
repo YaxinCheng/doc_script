@@ -1,7 +1,5 @@
-use crate::ast::{check_unpack, ConstantDeclaration, Expression, Statement};
+use crate::ast::{ConstantDeclaration, Expression, Statement};
 use crate::env::scope::*;
-use crate::parser::{Node, NodeKind};
-use crate::search::BreadthFirst;
 use scope_macro::Scoped;
 use std::collections::VecDeque;
 
@@ -38,35 +36,11 @@ impl<'a> FromIterator<Statement<'a>> for Block<'a> {
     }
 }
 
-#[derive(Scoped, Debug, Eq, PartialEq)]
-pub struct StructInitContent<'a> {
-    pub expressions: Vec<Expression<'a>>,
-    scope: Option<ScopeId>,
-}
-
-impl<'a> From<Node<'a>> for StructInitContent<'a> {
-    fn from(node: Node<'a>) -> Self {
-        let children = check_unpack!(node, NodeKind::StructInitContent);
-        let mut expressions = BreadthFirst::find_from(
-            children,
-            |node| matches!(node.kind(), Some(NodeKind::Expression)),
-            |node| node.children().unwrap_or_default(),
-        )
-        .map(Expression::from)
-        .collect::<Vec<_>>();
-        expressions.reverse();
-        StructInitContent {
-            expressions,
-            scope: None,
-        }
-    }
-}
-
 #[cfg(test)]
-impl<'a> From<Vec<Expression<'a>>> for StructInitContent<'a> {
-    fn from(expressions: Vec<Expression<'a>>) -> Self {
+impl<'a> From<Vec<Statement<'a>>> for Block<'a> {
+    fn from(statements: Vec<Statement<'a>>) -> Self {
         Self {
-            expressions,
+            statements,
             scope: None,
         }
     }
