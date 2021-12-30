@@ -223,6 +223,17 @@ fn test_type_field_access_internal_directly_from_type() {
     );
 }
 
+#[test]
+#[should_panic]
+fn test_type_constant_points_to_struct() {
+    test_type_access_internal(
+        r#"
+        struct A(field: String) 
+        const a = A
+        "#,
+    );
+}
+
 fn test_type_access_internal(program: &str) {
     let mut syntax_trees = vec![abstract_tree(parse(tokenize(program)))];
     let module_paths = vec![vec![]];
@@ -250,5 +261,41 @@ fn test_type_access_internal(program: &str) {
     let actual =
         TypeChecker::with_environment(&env).test_resolve_expression(&target_constant.value);
     let expected = Types::String;
+    assert_eq!(actual, expected)
+}
+
+#[test]
+fn test_self_type() {
+    let program = r#"
+    struct TestType {
+        const a = self
+    }
+    "#;
+    let module_paths = vec![vec![]];
+    let mut syntax_trees = [abstract_tree(parse(tokenize(program)))];
+    let env = Environment::builder()
+        .add_modules(&module_paths)
+        .generate_scopes(&mut syntax_trees)
+        .resolve_names(&syntax_trees)
+        .build();
+
+    let target_struct = try_block!(
+        &StructDeclaration,
+        syntax_trees
+            .first()?
+            .compilation_unit
+            .declarations
+            .first()?
+            .as_struct()
+    )
+    .unwrap();
+    let target_constant = try_block!(
+        &ConstantDeclaration,
+        target_struct.body.as_ref()?.attributes.first()
+    )
+    .unwrap();
+    let actual =
+        TypeChecker::with_environment(&env).test_resolve_expression(&target_constant.value);
+    let expected = Types::Struct(target_struct);
     assert_eq!(actual, expected)
 }

@@ -14,8 +14,12 @@ pub fn is_whitespace(c: char) -> bool {
     )
 }
 
+pub fn is_whitespace_or_newline(c: char) -> bool {
+    is_whitespace(c) || is_line_terminator_start(c)
+}
+
 pub fn whitespace_and_newline(cursor: &mut Cursor) -> usize {
-    cursor.eat_while(|char| is_whitespace(char) || is_line_terminator_start(char))
+    cursor.eat_while(|char| is_whitespace_or_newline(char))
 }
 
 pub fn newline(cursor: &mut Cursor) -> usize {

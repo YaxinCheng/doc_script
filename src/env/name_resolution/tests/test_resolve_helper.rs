@@ -1,5 +1,5 @@
 use super::super::resolve_helper::ResolveHelper;
-use crate::ast::{abstract_tree, Moniker};
+use crate::ast::abstract_tree;
 use crate::env::declaration_resolution::{DeclarationAdder, Importer};
 use crate::env::Environment;
 use crate::parser::parse;
@@ -60,7 +60,7 @@ fn test_resolve_from_wildcard_import(programs: [&'static str; 2]) {
     let helper = ResolveHelper(&env);
     let source_scope_id = env.find_module(&module_path[1]).unwrap();
     let resolved = helper
-        .resolve(source_scope_id, &Moniker::Simple("name"))
+        .resolve(source_scope_id, &["name"])
         .expect("Failed to resolve");
     let actual = resolved.into_constant().expect("Not constant");
     let expected = syntax_trees
@@ -94,7 +94,7 @@ fn test_unresolvable_name() {
     prepare_env!(env, &syntax_trees, &module_path);
     let helper = ResolveHelper(&env);
     let source_scope_id = env.find_module(&["test", "target"]).unwrap();
-    let unresolved = helper.resolve(source_scope_id, &Moniker::Simple("title"));
+    let unresolved = helper.resolve(source_scope_id, &["title"]);
     assert!(unresolved.is_none())
 }
 
@@ -118,7 +118,7 @@ fn test_shaded_name() {
     let helper = ResolveHelper(&env);
     let source_scope_id = env.find_module(&["test", "target"]).unwrap();
     let resolved = helper
-        .resolve(source_scope_id, &Moniker::Simple("name"))
+        .resolve(source_scope_id, &["name"])
         .expect("Failed to resolve");
     let actual = resolved.into_constant().expect("not constant");
     let expected = syntax_trees

@@ -41,10 +41,9 @@ impl<'ast, 'a, 'env> TypeLinker<'ast, 'a, 'env> {
     }
 
     fn link_type_in_module(&self, name: &'ast Name<'a>) -> Option<&'ast TypeDeclaration<'a>> {
-        let (resolved, not_resolved) =
-            ResolveHelper(self.0).resolve_module_lead_name(name.scope(), &name.moniker);
-        match (resolved, not_resolved.is_empty()) {
-            (Resolved::Struct(struct_declaration), true) => Some(struct_declaration),
+        let resolved = ResolveHelper(self.0).disambiguate(name);
+        match resolved {
+            Resolved::Struct(struct_declaration) => Some(struct_declaration),
             _ => None,
         }
     }

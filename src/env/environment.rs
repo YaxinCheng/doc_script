@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 pub struct Environment<'ast, 'a> {
     scopes: Vec<Scope<'ast, 'a>>,
-    pub(in crate::env) resolved_names: HashMap<Name<'a>, Resolved<'ast, 'a>>,
+    pub resolved_names: HashMap<Name<'a>, Resolved<'ast, 'a>>,
 }
 
 impl<'ast, 'a> Default for Environment<'ast, 'a> {

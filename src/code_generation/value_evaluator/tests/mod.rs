@@ -1,0 +1,6 @@
+mod expression_evaluator_tests;
+mod instance_access_evaluator_tests;
+mod instance_resolver_tests;
+mod literal_resolver_tests;
+mod string_resolver_tests;
+mod struct_resolver_tests;

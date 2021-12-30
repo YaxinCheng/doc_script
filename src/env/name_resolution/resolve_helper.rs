@@ -1,5 +1,6 @@
 use super::super::scope::*;
 use super::{Environment, Resolved};
+use crate::ast::Name;
 use crate::search::Traversal;
 
 pub(in crate::env::name_resolution) struct ResolveHelper<'ast, 'a, 'env>(
@@ -11,18 +12,11 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
     /// trying to find an element that matches the given moniker.
     ///
     /// If successfully found, this function returns the resolved element
-    /// and the scope where the moniker was resolved
-    ///
-    /// # Warning
-    /// When the moniker is resolved as an element which was imported through wildcard import,
-    /// the returned scope is not the scope where the element was imported from,
-    /// instead the scope is where the element was imported in
     ///
     /// # Arguments
-    /// * `scope` - The scope where search starts
     /// * `moniker` - A description for name, such as `["com", "module", "type"]`
     pub fn resolve<N: AsRef<[&'a str]>>(
-        self,
+        &self,
         scope: ScopeId,
         moniker: &N,
     ) -> Option<Resolved<'ast, 'a>> {
@@ -43,16 +37,6 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
         Self::resolve_declared(scope, name_slice)
             .or_else(|| self.resolve_from_wildcard_imports(scope, name))
             .or_else(|| Self::resolve_mod(scope, name_slice))
-    }
-
-    pub(in crate::env::name_resolution) fn resolve_in_module(
-        &self,
-        module_scope: ScopeId,
-        name: &'a str,
-    ) -> Option<Resolved<'ast, 'a>> {
-        let name = std::slice::from_ref(&name);
-        let module_scope = self.0.get_scope(module_scope);
-        Self::resolve_declared(module_scope, name).or_else(|| Self::resolve_mod(module_scope, name))
     }
 
     pub(in crate::env::name_resolution) fn resolve_declared(
@@ -96,14 +80,13 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
         }
     }
 
-    pub(in crate::env::name_resolution) fn resolve_module_lead_name<N: AsRef<[&'a str]>>(
+    pub(in crate::env::name_resolution) fn disambiguate(
         &self,
-        scope: ScopeId,
-        name: N,
-    ) -> (Resolved<'ast, 'a>, Vec<&'a str>) {
-        let (first_component, rest) = name.as_ref().split_first().expect("name is empty");
-        let mut last_resolved = ResolveHelper(self.0)
-            .resolve(scope, &std::slice::from_ref(first_component))
+        name: &Name<'a>,
+    ) -> Resolved<'ast, 'a> {
+        let (first_component, rest) = name.moniker.as_ref().split_first().expect("name is empty");
+        let mut last_resolved = self
+            .resolve(name.scope(), &std::slice::from_ref(first_component))
             .unwrap_or_else(|| panic!("Name `{}` is unresolvable", first_component));
         let mut access_iter = rest.iter().peekable();
         while let Some(component) = access_iter.peek() {
@@ -111,8 +94,8 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
                 Resolved::Module(module_scope) => self
                     .resolve_in_module(module_scope, component)
                     .unwrap_or_else(|| panic!("`{}` cannot be found in module", component)),
-                resolved @ Resolved::Constant(_) => {
-                    return (resolved, access_iter.copied().collect())
+                Resolved::Constant(constant) => {
+                    return Resolved::InstanceAccess(constant, access_iter.copied().collect())
                 }
                 Resolved::Struct(_) => panic!("Cannot access field from struct type definition"),
                 Resolved::InstanceAccess { .. } => {
@@ -121,6 +104,16 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
             };
             access_iter.next();
         }
-        (last_resolved, vec![])
+        last_resolved
+    }
+
+    pub(in crate::env::name_resolution) fn resolve_in_module(
+        &self,
+        module_scope: ScopeId,
+        name: &'a str,
+    ) -> Option<Resolved<'ast, 'a>> {
+        let name = std::slice::from_ref(&name);
+        let module_scope = self.0.get_scope(module_scope);
+        Self::resolve_declared(module_scope, name).or_else(|| Self::resolve_mod(module_scope, name))
     }
 }

@@ -3,8 +3,8 @@ use super::super::types::Types;
 use super::struct_init_checker::StructInitChecker;
 use super::type_resolver;
 use crate::ast::{
-    AbstractSyntaxTree, Accessor, Block, ConstantDeclaration, Declaration, Expression, Field, Name,
-    Parameter, Statement, StructDeclaration, StructInitContent,
+    AbstractSyntaxTree, Accessor, Block, ConstantDeclaration, Declaration, Expression, Field,
+    Moniker, Name, Parameter, Statement, StructDeclaration, StructInitContent,
 };
 use crate::env::address_hash::hash;
 use crate::env::environment::Resolved;
@@ -89,9 +89,12 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
         }
         let resolved = self.environment.resolved_names.get(name)?;
         let resolved_type = match &resolved {
-            Resolved::Struct(struct_type) => Types::Struct(struct_type),
+            Resolved::Struct(struct_type) => match name.moniker {
+                Moniker::Simple("$self") => Types::Struct(struct_type),
+                _ => panic!("Cannot assign struct `{}` to constant", struct_type.name),
+            },
             Resolved::Constant(constant) => self.resolve_expression(&constant.value),
-            Resolved::Module(_) => panic!("Cannot assign module to constant"),
+            Resolved::Module(_) => panic!("Cannot assign module `{}` to constant", name),
             Resolved::InstanceAccess(instance, fields) => {
                 if let Some(cached) = self.resolved_instance_fields.get(name) {
                     *cached

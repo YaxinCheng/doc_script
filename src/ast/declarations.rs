@@ -1,7 +1,7 @@
 use super::{debug_check, weeder, Expression, Field, Node, NodeKind};
 use crate::ast::check_unpack;
 use crate::ast::scoped_elements::StructBody;
-use crate::search::BreadthFirst;
+use crate::search::{BreadthFirst, DepthFirst};
 #[cfg(debug_assertions)]
 use crate::tokenizer::{Token, TokenKind};
 
@@ -88,7 +88,7 @@ impl<'a> StructDeclaration<'a> {
         let _close_bracket = children.pop();
         debug_check! { _close_bracket, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: ")" })) }
         let fields = children.pop().expect("Expect Fields");
-        let fields = BreadthFirst::find(
+        let fields = DepthFirst::find(
             fields,
             |node| {
                 matches!(
@@ -96,7 +96,11 @@ impl<'a> StructDeclaration<'a> {
                     Some(NodeKind::PlainField | NodeKind::DefaultField)
                 )
             },
-            |node| node.children().unwrap_or_default(),
+            |node| {
+                let mut children = node.children().unwrap_or_default();
+                children.reverse();
+                children
+            },
         )
         .map(Field::from)
         .collect::<Vec<_>>();

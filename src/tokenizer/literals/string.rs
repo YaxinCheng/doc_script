@@ -68,7 +68,7 @@ fn eat_escaped_char(cursor: &mut Cursor) -> usize {
     let backslash = cursor.bump().unwrap().len_utf8();
     let leading_char = cursor.first().expect("No character after backslash");
     let escaped_length = match leading_char {
-        'b' | 't' | 'n' | 'f' | 'r' | '"' | '\'' | '\\' => cursor.bump().unwrap().len_utf8(),
+        't' | 'n' | 'r' | '"' | '\'' | '\\' => cursor.bump().unwrap().len_utf8(),
         whitespace if is_whitespace(whitespace) || is_line_terminator_start(whitespace) => {
             whitespace_and_newline(cursor)
         }
