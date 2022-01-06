@@ -1,4 +1,4 @@
-use crate::ast::{ConstantDeclaration, Field, StructDeclaration};
+use crate::ast::{ConstantDeclaration, StructDeclaration};
 #[cfg(test)]
 use enum_as_inner::EnumAsInner;
 use std::collections::{HashMap, HashSet};
@@ -51,19 +51,12 @@ pub struct NameSpaces<'ast, 'a> {
 #[derive(Copy, Clone)]
 pub enum DeclaredElement<'ast, 'a> {
     Constant(&'ast ConstantDeclaration<'a>),
-    Field(&'ast Field<'a>),
     Struct(&'ast StructDeclaration<'a>),
 }
 
 impl<'ast, 'a> From<&'ast ConstantDeclaration<'a>> for DeclaredElement<'ast, 'a> {
     fn from(constant: &'ast ConstantDeclaration<'a>) -> Self {
         Self::Constant(constant)
-    }
-}
-
-impl<'ast, 'a> From<&'ast Field<'a>> for DeclaredElement<'ast, 'a> {
-    fn from(field: &'ast Field<'a>) -> Self {
-        Self::Field(field)
     }
 }
 

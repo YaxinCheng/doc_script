@@ -14,9 +14,9 @@ use super::Environment;
 use crate::ast::AbstractSyntaxTree;
 use resolution::NameResolver;
 pub use resolved::Resolved;
-pub use typed_element::TypedElement;
 use type_checking::TypeChecker;
 use type_linker::TypeLinker;
+pub use typed_element::TypedElement;
 
 pub(in crate::env) fn resolve<'ast, 'a>(
     environment: &mut Environment<'ast, 'a>,
@@ -28,17 +28,6 @@ pub(in crate::env) fn resolve<'ast, 'a>(
         expression_names,
     } = unresolved_names;
     TypeLinker(environment).link_types(type_names);
-    let instance_fields = NameResolver(environment).resolve_names(expression_names);
-    TypeChecker::new(instance_fields).resolve_and_check(environment, syntax_trees);
-}
-
-pub(in crate::env::name_resolution) fn split_first_component<'b, 's>(
-    name_components: &'b [&'s str],
-) -> (&'b [&'s str], &'b [&'s str]) {
-    if name_components.first() == Some(&"self") {
-        name_components.split_at(2)
-    } else {
-        let (first, remaining) = name_components.split_first().expect("Failed to split");
-        (std::slice::from_ref(first), remaining)
-    }
+    NameResolver(environment).resolve_names(expression_names);
+    TypeChecker::with_environment(environment).check(syntax_trees);
 }

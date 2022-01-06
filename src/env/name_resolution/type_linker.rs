@@ -30,12 +30,11 @@ impl<'ast, 'a, 'env> TypeLinker<'ast, 'a, 'env> {
     fn link_type(&self, name: &'ast Name<'a>) -> Option<&'ast TypeDeclaration<'a>> {
         ResolveHelper(self.0)
             .resolve(name.scope(), &name.moniker)
-            .map(|(resolved, _)| match resolved {
+            .map(|resolved| match resolved {
                 Resolved::Struct(struct_type) => struct_type,
-                Resolved::InstanceAccess(_) => {
+                Resolved::InstanceAccess(_, _) => {
                     panic!("Type name `{}` resolved to field access", name)
                 }
-                Resolved::Field { .. } => panic!("Type name `{}` resolved to field", name),
                 Resolved::Constant(_) => panic!("Type name `{}` resolved to constant", name),
                 Resolved::Module(_) => panic!("Type name `{}` resolved to module", name),
             })

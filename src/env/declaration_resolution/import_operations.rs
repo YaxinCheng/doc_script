@@ -87,10 +87,6 @@ impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
             .unwrap_or_else(|| panic!("Failed to resolve module: {}", module_path.join(".")));
         let element_name = vec![*last_element];
         if let Some(declared) = scope.name_spaces.declared.get(&element_name) {
-            debug_assert!(
-                !matches!(declared, DeclaredElement::Field(_)),
-                "Cannot import field"
-            );
             Importing::ExpressionOrStruct(*declared, element_name)
         } else if let Some(&scope_id) = scope.name_spaces.modules.get(last_element) {
             Importing::Module(scope_id, last_element)

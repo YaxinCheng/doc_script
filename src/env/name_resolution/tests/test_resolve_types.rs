@@ -1,8 +1,8 @@
 use super::{construct_env, try_block};
-use crate::ast::{abstract_tree, Expression, StructDeclaration};
+use crate::ast::{abstract_tree, ConstantDeclaration, Expression, StructDeclaration};
 use crate::env::name_resolution::types::Types;
-use crate::env::name_resolution::{NameResolver, TypeChecker, TypeLinker};
-use crate::env::{declaration_resolution, Environment};
+use crate::env::name_resolution::TypeChecker;
+use crate::env::Environment;
 use crate::parser::parse;
 use crate::tokenizer::{tokenize, LiteralKind};
 
@@ -33,8 +33,8 @@ fn test_bool() {
 
 fn test_literals(kind: LiteralKind, expected: Types) {
     let expression = Expression::Literal { kind, lexeme: "" };
-    let mut env = construct_env();
-    let actual = TypeChecker::default().test_resolve_expression(&mut env, &expression);
+    let env = construct_env();
+    let actual = TypeChecker::with_environment(&env).test_resolve_expression(&expression);
     assert_eq!(actual, expected)
 }
 
@@ -47,13 +47,11 @@ fn test_resolve_struct() {
         "#,
     )))];
     let module_paths = vec![vec![]];
-    let mut env = Environment::builder()
+    let env = Environment::builder()
         .add_modules(&module_paths)
         .generate_scopes(&mut syntax_trees)
+        .resolve_names(&syntax_trees)
         .build();
-    let names = declaration_resolution::resolve(&mut env, &syntax_trees, &module_paths);
-    TypeLinker(&mut env).link_types(names.type_names);
-    let instance_fields = NameResolver(&mut env).resolve_names(names.expression_names);
 
     let target_expression = try_block!(
         &Expression,
@@ -78,8 +76,7 @@ fn test_resolve_struct() {
             .as_struct()
     )
     .unwrap();
-    let actual =
-        TypeChecker::new(instance_fields).test_resolve_expression(&mut env, target_expression);
+    let actual = TypeChecker::with_environment(&env).test_resolve_expression(target_expression);
     let expected = Types::Struct(target_struct);
     assert_eq!(actual, expected)
 }
@@ -95,13 +92,11 @@ fn test_resolve_from_block() {
         "#,
     )))];
     let module_paths = vec![vec![]];
-    let mut env = Environment::builder()
+    let env = Environment::builder()
         .add_modules(&module_paths)
         .generate_scopes(&mut syntax_trees)
+        .resolve_names(&syntax_trees)
         .build();
-    let names = declaration_resolution::resolve(&mut env, &syntax_trees, &module_paths);
-    TypeLinker(&mut env).link_types(names.type_names);
-    let instance_fields = NameResolver(&mut env).resolve_names(names.expression_names);
 
     let target_block = try_block!(
         &Expression,
@@ -116,7 +111,7 @@ fn test_resolve_from_block() {
         )
     )
     .unwrap();
-    let actual = TypeChecker::new(instance_fields).test_resolve_expression(&mut env, target_block);
+    let actual = TypeChecker::with_environment(&env).test_resolve_expression(target_block);
     let expected = Types::Int;
     assert_eq!(actual, expected)
 }
@@ -132,13 +127,11 @@ fn test_resolve_field_access_from_block() {
         "#,
     )))];
     let module_paths = vec![vec![]];
-    let mut env = Environment::builder()
+    let env = Environment::builder()
         .add_modules(&module_paths)
         .generate_scopes(&mut syntax_trees)
+        .resolve_names(&syntax_trees)
         .build();
-    let names = declaration_resolution::resolve(&mut env, &syntax_trees, &module_paths);
-    TypeLinker(&mut env).link_types(names.type_names);
-    let instance_fields = NameResolver(&mut env).resolve_names(names.expression_names);
 
     let target_block = try_block!(
         &Expression,
@@ -153,7 +146,108 @@ fn test_resolve_field_access_from_block() {
         )
     )
     .unwrap();
-    let actual = TypeChecker::new(instance_fields).test_resolve_expression(&mut env, target_block);
+    let actual = TypeChecker::with_environment(&env).test_resolve_expression(target_block);
+    let expected = Types::String;
+    assert_eq!(actual, expected)
+}
+
+#[test]
+fn test_type_field_access_internal() {
+    test_type_access_internal(
+        r#"
+        struct A(field: String) {
+            const a = self.field
+        }
+        "#,
+    );
+}
+
+#[test]
+fn test_type_attribute_access_internal() {
+    test_type_access_internal(
+        r#"
+        struct A(field: String) {
+            const b = self.field
+            const a = b
+        }
+        "#,
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_type_field_access_internal_without_self() {
+    test_type_access_internal(
+        r#"
+        struct A(field: String) {
+            const a = field
+        }
+        "#,
+    );
+}
+
+#[test]
+fn test_type_attribute_access_internal_with_self() {
+    test_type_access_internal(
+        r#"
+        struct A(field: String) {
+            const b = self.field
+            const a = self.b
+        }
+        "#,
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_type_attribute_access_internal_directly_from_type() {
+    test_type_access_internal(
+        r#"
+        struct A(field: String) {
+            const b = self.field
+            const a = A.b
+        }
+        "#,
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_type_field_access_internal_directly_from_type() {
+    test_type_access_internal(
+        r#"
+        struct A(field: String) {
+            const a = A.field
+        }
+        "#,
+    );
+}
+
+fn test_type_access_internal(program: &str) {
+    let mut syntax_trees = vec![abstract_tree(parse(tokenize(program)))];
+    let module_paths = vec![vec![]];
+    let env = Environment::builder()
+        .add_modules(&module_paths)
+        .generate_scopes(&mut syntax_trees)
+        .resolve_names(&syntax_trees)
+        .build();
+
+    let target_constant = try_block!(
+        &ConstantDeclaration,
+        syntax_trees
+            .first()?
+            .compilation_unit
+            .declarations
+            .first()?
+            .as_struct()?
+            .body
+            .attributes
+            .first()
+    )
+    .unwrap();
+
+    let actual =
+        TypeChecker::with_environment(&env).test_resolve_expression(&target_constant.value);
     let expected = Types::String;
     assert_eq!(actual, expected)
 }

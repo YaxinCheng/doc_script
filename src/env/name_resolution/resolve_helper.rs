@@ -25,14 +25,13 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
         self,
         scope: ScopeId,
         moniker: &N,
-    ) -> Option<(Resolved<'ast, 'a>, ScopeId)> {
+    ) -> Option<Resolved<'ast, 'a>> {
         let start_scope = self.0.get_scope(scope);
         let mut traverse_to_global = Traversal::traverse(start_scope, |scope| match scope.id {
             GLOBAL_SCOPE => None,
             _ => Some(self.0.get_scope(scope.parent)),
         });
-        traverse_to_global
-            .find_map(|scope| (self.try_resolve_name(scope, moniker).zip(Some(scope.id))))
+        traverse_to_global.find_map(|scope| self.try_resolve_name(scope, moniker))
     }
 
     fn try_resolve_name<N: AsRef<[&'a str]>>(
@@ -102,30 +101,25 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
         scope: ScopeId,
         name: N,
     ) -> (Resolved<'ast, 'a>, Vec<&'a str>) {
-        let (first_component, rest) = super::split_first_component(name.as_ref());
-        let (mut last_resolved, _) = ResolveHelper(self.0)
-            .resolve(scope, &first_component)
-            .unwrap_or_else(|| panic!("Name `{}` is unresolvable", first_component.join(".")));
-        let mut access_iter = rest.iter();
-        while let Some(component) = access_iter.next() {
+        let (first_component, rest) = name.as_ref().split_first().expect("name is empty");
+        let mut last_resolved = ResolveHelper(self.0)
+            .resolve(scope, &std::slice::from_ref(first_component))
+            .unwrap_or_else(|| panic!("Name `{}` is unresolvable", first_component));
+        let mut access_iter = rest.iter().peekable();
+        while let Some(component) = access_iter.peek() {
             last_resolved = match last_resolved {
                 Resolved::Module(module_scope) => self
                     .resolve_in_module(module_scope, component)
                     .unwrap_or_else(|| panic!("`{}` cannot be found in module", component)),
-                resolved @ (Resolved::Constant(_) | Resolved::Field(_)) => {
-                    return (
-                        resolved,
-                        std::iter::once(component)
-                            .chain(access_iter)
-                            .copied()
-                            .collect(),
-                    )
+                resolved @ Resolved::Constant(_) => {
+                    return (resolved, access_iter.copied().collect())
                 }
                 Resolved::Struct(_) => panic!("Cannot access field from struct type definition"),
                 Resolved::InstanceAccess { .. } => {
                     unreachable!("Field cannot be found at this stage")
                 }
             };
+            access_iter.next();
         }
         (last_resolved, vec![])
     }

@@ -35,9 +35,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
         seen_names: &mut UnresolvedNames<'ast, 'a>,
     ) {
         match declaration {
-            Declaration::Constant(constant) => {
-                self.add_constant(false, constant, scope_id, seen_names)
-            }
+            Declaration::Constant(constant) => self.add_constant(constant, scope_id, seen_names),
             Declaration::Struct(r#struct) => {
                 self.add_struct_declaration(r#struct, scope_id, seen_names)
             }
@@ -47,16 +45,12 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
 
     fn add_constant(
         &mut self,
-        is_struct_attr: bool,
         constant: &'ast ConstantDeclaration<'a>,
         scope_id: ScopeId,
         seen_names: &mut UnresolvedNames<'ast, 'a>,
     ) {
         let scope = self.0.get_scope_mut(scope_id);
-        let constant_name = match is_struct_attr {
-            true => vec!["self", constant.name],
-            false => vec![constant.name],
-        };
+        let constant_name = vec![constant.name];
         let duplicate_declaration = scope
             .name_spaces
             .declared
@@ -149,7 +143,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
                 self.add_expression(expression, scope_id, seen_names)
             }
             Statement::ConstantDeclaration(constant) => {
-                self.add_constant(false, constant, scope_id, seen_names)
+                self.add_constant(constant, scope_id, seen_names)
             }
         };
     }
@@ -176,25 +170,18 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
         }
         let body_scope_id = r#struct.body.scope();
         let body_scope = self.0.get_scope_mut(body_scope_id);
+        body_scope
+            .name_spaces
+            .declared
+            .insert(vec!["$self"], r#struct.into());
         for field in &r#struct.fields {
             seen_names.type_names.insert(&field.field_type.0);
-            let insert_result = body_scope
-                .name_spaces
-                .declared
-                .insert(vec!["self", field.name], field.into());
-            assert!(
-                insert_result.is_none(),
-                "Conflicting field name: {}",
-                field.name
-            );
+            if let Some(default_value) = &field.default_value {
+                self.add_expression(default_value, scope_id, seen_names);
+            }
         }
-        r#struct
-            .fields
-            .iter()
-            .filter_map(|field| field.default_value.as_ref())
-            .for_each(|default_value| self.add_expression(default_value, scope_id, seen_names));
         for declaration in &r#struct.body.attributes {
-            self.add_constant(true, declaration, body_scope_id, seen_names)
+            self.add_constant(declaration, body_scope_id, seen_names)
         }
     }
 }

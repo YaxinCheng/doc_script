@@ -1,4 +1,4 @@
-use crate::ast::{abstract_tree, ConstantDeclaration, Field, Name, StructDeclaration};
+use crate::ast::{abstract_tree, ConstantDeclaration, Name, StructDeclaration};
 use crate::env::name_resolution::tests::try_block;
 use crate::env::name_resolution::{NameResolver, TypeLinker};
 use crate::env::scope::{Scoped, GLOBAL_SCOPE};
@@ -73,74 +73,4 @@ fn resolve_module_struct() {
     )
     .unwrap();
     assert!(std::ptr::eq(actual, expected));
-}
-
-#[test]
-fn test_resolve_field_internal() {
-    let mut syntax_trees = vec![abstract_tree(parse(tokenize(
-        r#"
-        struct Test(field: Int) {
-            const value = self.field
-        }
-        "#,
-    )))];
-    let module_path = vec![vec![]];
-    let mut target_name = Name::qualified(vec!["self", "field"]);
-    // env not constructed, but we know the struct scope is 1 as only two scopes exist
-    target_name.set_scope(1);
-    let resolved_names = test_resolve!(syntax_trees, module_path);
-    let actual = try_block!(
-        &Field,
-        resolved_names.get(&target_name)?.as_field().copied()
-    )
-    .unwrap();
-    let expected = try_block!(
-        &Field,
-        syntax_trees
-            .last()?
-            .compilation_unit
-            .declarations
-            .first()?
-            .as_struct()?
-            .fields
-            .first()
-    )
-    .unwrap();
-    assert!(std::ptr::eq(actual, expected))
-}
-
-#[test]
-fn test_resolve_attribute_internal() {
-    let mut syntax_trees = vec![abstract_tree(parse(tokenize(
-        r#"
-        struct Test {
-            const field = 3
-            const value = self.field
-        } 
-        "#,
-    )))];
-    let module_path = vec![vec![]];
-    let mut target_name = Name::qualified(vec!["self", "field"]);
-    // env not constructed, but we know the struct scope is 1 as only two scopes exist
-    target_name.set_scope(1);
-    let resolved_names = test_resolve!(syntax_trees, module_path);
-    let actual = try_block!(
-        &ConstantDeclaration,
-        resolved_names.get(&target_name)?.as_constant().copied()
-    )
-    .unwrap();
-    let expected = try_block!(
-        &ConstantDeclaration,
-        syntax_trees
-            .last()?
-            .compilation_unit
-            .declarations
-            .first()?
-            .as_struct()?
-            .body
-            .attributes
-            .first()
-    )
-    .unwrap();
-    assert!(std::ptr::eq(actual, expected))
 }

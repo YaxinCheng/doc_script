@@ -65,6 +65,10 @@ impl<'a> Expression<'a> {
         let child = children.pop().expect("One child expected");
         match child {
             Node::Internal { .. } => Expression::from(child),
+            Node::Leaf(Token {
+                kind: TokenKind::Keyword,
+                lexeme: "self",
+            }) => Expression::ConstUse(Name::simple("$self")),
             Node::Leaf(_) => {
                 Expression::from(children.pop().expect("Bracketed expression expected"))
             }
@@ -140,7 +144,7 @@ impl<'a> Expression<'a> {
                 let _self = children.pop();
                 debug_check! { _self, Some(Node::Leaf(Token { kind: TokenKind::Keyword, lexeme: "self" })) };
             }
-            let components = std::iter::once("self")
+            let components = std::iter::once("$self")
                 .chain(name.moniker.as_slice().iter().copied())
                 .collect::<Vec<_>>();
             Expression::ConstUse(Name::qualified(components))
@@ -251,23 +255,13 @@ impl<'a> Expression<'a> {
 
     fn field_access(node: Node<'a>) -> Expression<'a> {
         let mut children = check_unpack!(node, NodeKind::FieldAccess);
-        let name = children.pop().expect("FieldAccess ends with Name");
-        let field_names = BreadthFirst::find(
-            name,
-            |node| {
-                matches!(
-                    node,
-                    Node::Leaf(Token {
-                        kind: TokenKind::Identifier,
-                        ..
-                    })
-                )
-            },
-            |node| node.children().unwrap_or_default(),
-        )
-        .filter_map(|node| node.token())
-        .map(|token| token.lexeme)
-        .collect();
+        let field_names = children
+            .pop()
+            .map(Name::from)
+            .expect("FieldAccess ends with Name")
+            .moniker
+            .as_slice()
+            .to_vec();
         let _dot = children.pop();
         debug_check! { _dot, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "." })) };
         let receiver = children

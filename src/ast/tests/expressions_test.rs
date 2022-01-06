@@ -297,6 +297,39 @@ fn test_field_access_from_struct_init() {
     assert_eq!(expression, expected)
 }
 
+#[test]
+fn test_attribute_access_from_internal() {
+    let program = r#"
+        struct Id(number: Int) 
+        struct person {
+            const identifier = self.id.number
+            const id = Id(3)
+        }
+    "#;
+    let expression = find_first_expression(program).expect("Expression expected");
+    let expected = Expression::FieldAccess {
+        receiver: Box::new(Expression::ConstUse(Name::simple("$self"))),
+        field_names: vec!["id", "number"],
+    };
+    assert_eq!(expression, expected)
+}
+
+#[test]
+fn test_field_access_from_internal() {
+    let program = r#"
+        struct Id(number: Int)
+        struct Person(id: Id) {
+            const identifier = self.id.number
+        }
+        "#;
+    let expression = find_first_expression(program).expect("Expression expected");
+    let expected = Expression::FieldAccess {
+        receiver: Box::new(Expression::ConstUse(Name::simple("$self"))),
+        field_names: vec!["id", "number"],
+    };
+    assert_eq!(expression, expected)
+}
+
 fn find_first_expression(program: &str) -> Option<Expression> {
     let parse_tree = parse(tokenize(program));
     BreadthFirst::find(

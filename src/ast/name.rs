@@ -21,7 +21,7 @@ pub enum Moniker<'a> {
 }
 
 impl<'a> Name<'a> {
-    pub fn simple(text: &'a str) -> Self {
+    pub const fn simple(text: &'a str) -> Self {
         Name {
             moniker: Moniker::Simple(text),
             scope: None,

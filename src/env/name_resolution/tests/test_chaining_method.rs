@@ -1,10 +1,8 @@
 use crate::ast::abstract_tree;
-use crate::env::name_resolution::resolution::NameResolver;
 use crate::env::name_resolution::tests::try_block;
 use crate::env::name_resolution::type_checking::TypeChecker;
-use crate::env::name_resolution::type_linker::TypeLinker;
 use crate::env::name_resolution::types::Types;
-use crate::env::{declaration_resolution, Environment};
+use crate::env::Environment;
 use crate::parser::parse;
 use crate::tokenizer::tokenize;
 
@@ -82,13 +80,12 @@ fn test_chaining_method_invoke(program: &str) {
     use crate::ast::{Expression, StructDeclaration};
     let mut syntax_trees = vec![abstract_tree(parse(tokenize(program)))];
     let module_paths = vec![vec![]];
-    let mut env = Environment::builder()
+    let env = Environment::builder()
         .add_modules(&module_paths)
         .generate_scopes(&mut syntax_trees)
+        .resolve_names(&syntax_trees)
         .build();
-    let names = declaration_resolution::resolve(&mut env, &syntax_trees, &module_paths);
-    TypeLinker(&mut env).link_types(names.type_names);
-    let instance_fields = NameResolver(&mut env).resolve_names(names.expression_names);
+
     let target_expression = try_block!(
         &Expression,
         syntax_trees
@@ -100,8 +97,7 @@ fn test_chaining_method_invoke(program: &str) {
             .map(|constant| &constant.value)
     )
     .unwrap();
-    let actual =
-        TypeChecker::new(instance_fields).test_resolve_expression(&mut env, target_expression);
+    let actual = TypeChecker::with_environment(&env).test_resolve_expression(target_expression);
     let expected_type = try_block!(
         &StructDeclaration,
         syntax_trees
