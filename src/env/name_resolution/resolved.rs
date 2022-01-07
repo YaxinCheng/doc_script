@@ -10,7 +10,7 @@ pub enum Resolved<'ast, 'a> {
     Module(ScopeId),
     Constant(&'ast ConstantDeclaration<'a>),
     Struct(&'ast StructDeclaration<'a>),
-    InstanceAccess(Box<Resolved<'ast, 'a>>, Vec<&'a str>),
+    InstanceAccess(&'ast ConstantDeclaration<'a>, Vec<&'a str>),
 }
 
 impl<'ast, 'a> From<DeclaredElement<'ast, 'a>> for Resolved<'ast, 'a> {

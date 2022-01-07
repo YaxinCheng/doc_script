@@ -1,5 +1,5 @@
 use crate::ast::{
-    ConstantDeclaration, Declaration, Expression, Field, Name, StructBody, StructDeclaration, Type,
+    ConstantDeclaration, Declaration, Expression, Field, Name, StructDeclaration, Type,
 };
 use crate::parser::{parse, NodeKind};
 use crate::search::DepthFirst;
@@ -33,11 +33,13 @@ struct Square(
                 }),
             },
         ],
-        body: vec![ConstantDeclaration {
-            name: "height",
-            value: Expression::ConstUse(Name::simple("width")),
-        }]
-        .into(),
+        body: Some(
+            vec![ConstantDeclaration {
+                name: "height",
+                value: Expression::ConstUse(Name::simple("width")),
+            }]
+            .into(),
+        ),
     });
     assert_eq!(struct_declaration, expected)
 }
@@ -68,7 +70,7 @@ struct Square(
                 }),
             },
         ],
-        body: StructBody::default(),
+        body: None,
     });
     assert_eq!(struct_declaration, expected)
 }
@@ -96,14 +98,16 @@ struct Square {
     let expected = Declaration::Struct(StructDeclaration {
         name: "Square",
         fields: vec![],
-        body: vec![ConstantDeclaration {
-            name: "side",
-            value: Expression::Literal {
-                kind: LiteralKind::Integer,
-                lexeme: "3",
-            },
-        }]
-        .into(),
+        body: Some(
+            vec![ConstantDeclaration {
+                name: "side",
+                value: Expression::Literal {
+                    kind: LiteralKind::Integer,
+                    lexeme: "3",
+                },
+            }]
+            .into(),
+        ),
     });
     assert_eq!(struct_declaration, expected)
 }
@@ -117,7 +121,7 @@ struct Square
     let expected = Declaration::Struct(StructDeclaration {
         name: "Square",
         fields: vec![],
-        body: StructBody::default(),
+        body: None,
     });
     assert_eq!(struct_declaration, expected)
 }

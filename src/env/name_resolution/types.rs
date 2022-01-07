@@ -40,7 +40,7 @@ impl<'ast, 'a> Types<'ast, 'a> {
 
     pub fn attribute(&self, name: &str) -> Option<&'ast ConstantDeclaration<'a>> {
         let struct_body = match self {
-            Types::Struct(r#struct) => &r#struct.body,
+            Types::Struct(r#struct) => r#struct.body.as_ref()?,
             _ => None?,
         };
         struct_body

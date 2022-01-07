@@ -3,8 +3,8 @@ use super::super::types::Types;
 use super::struct_init_checker::StructInitChecker;
 use super::type_resolver;
 use crate::ast::{
-    AbstractSyntaxTree, Accessor, Block, Declaration, Expression, Field, Name, Parameter,
-    Statement, StructDeclaration, StructInitContent,
+    AbstractSyntaxTree, Accessor, Block, ConstantDeclaration, Declaration, Expression, Field, Name,
+    Parameter, Statement, StructDeclaration, StructInitContent,
 };
 use crate::env::address_hash::hash;
 use crate::env::environment::Resolved;
@@ -109,13 +109,10 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
 
     fn resolve_from_instance_fields(
         &mut self,
-        instance: &Resolved<'ast, 'a>,
+        instance: &'ast ConstantDeclaration<'a>,
         fields: &[&'a str],
     ) -> Types<'ast, 'a> {
-        let mut current_type = match instance {
-            Resolved::Constant(constant) => self.resolve_expression(&constant.value),
-            _ => unreachable!("InstanceAccess can only start with constant"),
-        };
+        let mut current_type = self.resolve_expression(&instance.value);
         for field in fields {
             let access = current_type
                 .access(field)
@@ -213,8 +210,10 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
         for field in &r#struct.fields {
             self.resolve_field(field);
         }
-        for attribute in &r#struct.body.attributes {
-            self.resolve_expression(&attribute.value);
+        if let Some(body) = &r#struct.body {
+            for attribute in &body.attributes {
+                self.resolve_expression(&attribute.value);
+            }
         }
     }
 

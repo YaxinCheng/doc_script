@@ -27,7 +27,7 @@ fn test_resolve_from_struct_init() {
 
 #[test]
 fn test_resolve_from_field() {
-    test_type_linking("struct Empty(empty: Empty)\n", 1);
+    test_type_linking("struct Empty(empty: Empty)\n", GLOBAL_SCOPE);
 }
 
 #[test]

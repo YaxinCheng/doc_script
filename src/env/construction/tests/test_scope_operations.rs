@@ -43,7 +43,7 @@ fn test_scope_for_struct_definition() {
     let module_paths = prepare_module_paths();
     ScopeGenerator(&mut env).generate(&mut ast, &module_paths);
     let struct_definition = struct_definitions(ast.pop().unwrap()).pop().unwrap();
-    let body = struct_definition.body;
+    let body = struct_definition.body.expect("Body is empty");
     assert_eq!(body.scope(), 1)
 }
 

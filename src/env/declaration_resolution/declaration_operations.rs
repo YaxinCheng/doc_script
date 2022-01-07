@@ -164,24 +164,22 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
             "Cannot redefine struct in the same module with name: {}",
             r#struct.name
         );
-        let skip_body_scope = r#struct.body.attributes.is_empty() && r#struct.fields.is_empty();
-        if skip_body_scope {
-            return;
-        }
-        let body_scope_id = r#struct.body.scope();
-        let body_scope = self.0.get_scope_mut(body_scope_id);
-        body_scope
-            .name_spaces
-            .declared
-            .insert(vec!["$self"], r#struct.into());
         for field in &r#struct.fields {
             seen_names.type_names.insert(&field.field_type.0);
             if let Some(default_value) = &field.default_value {
                 self.add_expression(default_value, scope_id, seen_names);
             }
         }
-        for declaration in &r#struct.body.attributes {
-            self.add_constant(declaration, body_scope_id, seen_names)
+        if let Some(body) = &r#struct.body {
+            let body_scope_id = body.scope();
+            let body_scope = self.0.get_scope_mut(body_scope_id);
+            body_scope
+                .name_spaces
+                .declared
+                .insert(vec!["$self"], r#struct.into());
+            for declaration in &body.attributes {
+                self.add_constant(declaration, body_scope_id, seen_names)
+            }
         }
     }
 }

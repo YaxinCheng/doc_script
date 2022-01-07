@@ -33,7 +33,7 @@ impl<'a> From<Node<'a>> for ConstantDeclaration<'a> {
 pub struct StructDeclaration<'a> {
     pub name: &'a str,
     pub fields: Vec<Field<'a>>,
-    pub body: StructBody<'a>,
+    pub body: Option<StructBody<'a>>,
 }
 
 impl<'a> From<Node<'a>> for StructDeclaration<'a> {
@@ -46,25 +46,33 @@ impl<'a> From<Node<'a>> for StructDeclaration<'a> {
             .and_then(|node| node.token())
             .map(|token| token.lexeme)
             .expect("Expect struct name");
-        StructDeclaration { name, fields, body }
+        let struct_declaration = StructDeclaration { name, fields, body };
+        weeder::structure::weed(&struct_declaration);
+        struct_declaration
     }
 }
 
 impl<'a> StructDeclaration<'a> {
-    fn eat_struct_body(children: &mut Vec<Node<'a>>) -> StructBody<'a> {
+    fn eat_struct_body(children: &mut Vec<Node<'a>>) -> Option<StructBody<'a>> {
         if !matches!(
             children.last().and_then(Node::kind),
             Some(NodeKind::StructBody)
         ) {
-            return StructBody::default();
+            None
+        } else {
+            let body = BreadthFirst::find(
+                children.pop().unwrap(),
+                |node| matches!(node.kind(), Some(NodeKind::ConstantDeclaration)),
+                |node| node.children().unwrap_or_default(),
+            )
+            .map(ConstantDeclaration::from)
+            .collect::<StructBody>();
+            if body.attributes.is_empty() {
+                None
+            } else {
+                Some(body)
+            }
         }
-        BreadthFirst::find(
-            children.pop().unwrap(),
-            |node| matches!(node.kind(), Some(NodeKind::ConstantDeclaration)),
-            |node| node.children().unwrap_or_default(),
-        )
-        .map(ConstantDeclaration::from)
-        .collect()
     }
 
     fn eat_fields(children: &mut Vec<Node<'a>>) -> Vec<Field<'a>> {

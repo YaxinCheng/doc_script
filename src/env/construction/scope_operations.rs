@@ -121,21 +121,19 @@ impl<'ast, 'a, 'env> ScopeGenerator<'ast, 'a, 'env> {
         r#struct: &mut StructDeclaration<'a>,
         scope_id: ScopeId,
     ) {
-        let empty_body = r#struct.body.attributes.is_empty() && r#struct.fields.is_empty();
-        if empty_body {
-            return;
-        }
-        let body_scope = self.0.add_child_scope(scope_id).id;
-        r#struct.body.set_scope(body_scope);
         for field in r#struct.fields.iter_mut() {
-            field.field_type.0.set_scope(body_scope);
+            field.field_type.0.set_scope(scope_id);
             if let Some(default_value) = field.default_value.as_mut() {
                 // field default value is not in the body scope
                 self.generate_for_expression(default_value, scope_id);
             }
         }
-        for declaration in r#struct.body.attributes.iter_mut() {
-            self.generate_for_constant(declaration, body_scope)
+        if let Some(body) = r#struct.body.as_mut() {
+            let body_scope = self.0.add_child_scope(scope_id).id;
+            r#body.set_scope(body_scope);
+            for declaration in body.attributes.iter_mut() {
+                self.generate_for_constant(declaration, body_scope)
+            }
         }
     }
 }

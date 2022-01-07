@@ -30,7 +30,13 @@ impl<'ast, 'a, 'env> NameResolver<'ast, 'a, 'env> {
             resolved
         } else {
             let fields = not_resolved;
-            Resolved::InstanceAccess(Box::new(resolved), fields)
+            let receiver = match resolved {
+                Resolved::Constant(constant) => constant,
+                _ => unreachable!(
+                    "InstanceAccess only happens on constant or self (which is also a constant)"
+                ),
+            };
+            Resolved::InstanceAccess(receiver, fields)
         }
     }
 }

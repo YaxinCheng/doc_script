@@ -241,6 +241,7 @@ fn test_type_access_internal(program: &str) {
             .first()?
             .as_struct()?
             .body
+            .as_ref()?
             .attributes
             .first()
     )
