@@ -73,7 +73,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
             Expression::ConstUse(constant_name) => {
                 seen_names.expression_names.insert(constant_name);
             }
-            Expression::Literal { .. } => (),
+            Expression::Literal { .. } | Expression::SelfRef(_) => (),
             Expression::StructInit {
                 name,
                 parameters,

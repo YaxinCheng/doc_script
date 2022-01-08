@@ -76,6 +76,52 @@ struct Square(
 }
 
 #[test]
+fn struct_declaration_multiple_fields() {
+    let program = r#"
+struct Square(
+    width: Int,
+    height: Int,
+    content: String = "",
+    id: Int = 0
+)
+"#;
+    let struct_declaration = get_struct(program);
+    let expected = Declaration::Struct(StructDeclaration {
+        name: "Square",
+        fields: vec![
+            Field {
+                name: "width",
+                field_type: Type(Name::simple("Int")),
+                default_value: None,
+            },
+            Field {
+                name: "height",
+                field_type: Type(Name::simple("Int")),
+                default_value: None,
+            },
+            Field {
+                name: "content",
+                field_type: Type(Name::simple("String")),
+                default_value: Some(Expression::Literal {
+                    kind: LiteralKind::String,
+                    lexeme: r#""""#,
+                }),
+            },
+            Field {
+                name: "id",
+                field_type: Type(Name::simple("Int")),
+                default_value: Some(Expression::Literal {
+                    kind: LiteralKind::Integer,
+                    lexeme: r#"0"#,
+                }),
+            },
+        ],
+        body: None,
+    });
+    assert_eq!(struct_declaration, expected)
+}
+
+#[test]
 #[should_panic]
 fn struct_default_field_comes_first() {
     let program = r#"

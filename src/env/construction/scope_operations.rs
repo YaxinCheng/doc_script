@@ -52,6 +52,7 @@ impl<'ast, 'a, 'env> ScopeGenerator<'ast, 'a, 'env> {
                 constant_name.set_scope(scope_id);
             }
             Expression::Literal { .. } => (),
+            Expression::SelfRef(self_scope) => *self_scope = Some(scope_id),
             Expression::StructInit {
                 name,
                 parameters,

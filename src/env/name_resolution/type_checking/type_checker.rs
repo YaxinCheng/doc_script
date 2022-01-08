@@ -3,11 +3,13 @@ use super::super::types::Types;
 use super::struct_init_checker::StructInitChecker;
 use super::type_resolver;
 use crate::ast::{
-    AbstractSyntaxTree, Accessor, Block, ConstantDeclaration, Declaration, Expression, Field,
-    Moniker, Name, Parameter, Statement, StructDeclaration, StructInitContent,
+    AbstractSyntaxTree, Accessor, Block, ConstantDeclaration, Declaration, Expression, Field, Name,
+    Parameter, Statement, StructDeclaration, StructInitContent,
 };
 use crate::env::address_hash::hash;
 use crate::env::environment::Resolved;
+use crate::env::name_resolution::resolve_helper::ResolveHelper;
+use crate::env::scope::ScopeId;
 use crate::env::Environment;
 use std::collections::{HashMap, HashSet};
 
@@ -57,6 +59,9 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
         }
         let resolve_type = match expression {
             Expression::ConstUse(name) => self.resolve_from_constant_use_name(name),
+            Expression::SelfRef(scope_id) => {
+                self.resolve_self(scope_id.expect("self scope not set"))
+            }
             Expression::Literal { kind, .. } => type_resolver::resolve_literal(kind),
             Expression::Block(block) => self.resolve_block(block),
             Expression::StructInit {
@@ -89,12 +94,7 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
         }
         let resolved = self.environment.resolved_names.get(name)?;
         let resolved_type = match &resolved {
-            Resolved::Struct(struct_type) => match name.moniker {
-                Moniker::Simple("$self") => Types::Struct(struct_type),
-                _ => panic!("Cannot assign struct `{}` to constant", struct_type.name),
-            },
             Resolved::Constant(constant) => self.resolve_expression(&constant.value),
-            Resolved::Module(_) => panic!("Cannot assign module `{}` to constant", name),
             Resolved::InstanceAccess(instance, fields) => {
                 if let Some(cached) = self.resolved_instance_fields.get(name) {
                     *cached
@@ -105,9 +105,20 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
                     resolved_type
                 }
             }
+            Resolved::Module(_) => panic!("Cannot assign module `{}` to constant", name),
+            Resolved::Struct(struct_type) => {
+                panic!("Cannot assign struct `{}` to constant", struct_type.name)
+            }
         };
         self.checking_expression.remove(name);
         Some(resolved_type)
+    }
+
+    fn resolve_self(&self, scope: ScopeId) -> Types<'ast, 'a> {
+        match ResolveHelper(self.environment).resolve(scope, &["$self"]) {
+            Some(Resolved::Struct(struct_declaration)) => Types::Struct(struct_declaration),
+            _ => panic!("self can only be used in structs"),
+        }
     }
 
     fn resolve_from_instance_fields(

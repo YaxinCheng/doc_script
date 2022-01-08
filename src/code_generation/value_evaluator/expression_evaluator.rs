@@ -45,6 +45,7 @@ impl<'ast, 'a, 'env> ExpressionEvaluator<'ast, 'a, 'env> {
                 accessors,
             } => self.evaluate_chaining_methods(receiver, accessors, self_ref),
             Expression::Block(block) => self.evaluate_block(block, self_ref),
+            Expression::SelfRef(_) => Self::evaluate_self(self_ref),
         }
     }
 
@@ -63,10 +64,7 @@ impl<'ast, 'a, 'env> ExpressionEvaluator<'ast, 'a, 'env> {
             Resolved::InstanceAccess(receiver, accesses) => {
                 InstanceAccessEvaluator::new(self, self_ref).evaluate(receiver, accesses)
             }
-            Resolved::Struct(_) => self_ref
-                .clone()
-                .expect("self does not exist in current scope"),
-            _ => unreachable!("name `{}` is not resolved to constant", name),
+            _ => unreachable!("name `{}` is not resolved to constant or field", name),
         }
     }
 
@@ -153,5 +151,11 @@ impl<'ast, 'a, 'env> ExpressionEvaluator<'ast, 'a, 'env> {
             Some(Statement::ConstantDeclaration(_)) | None => Value::Void,
             Some(Statement::Expression(expr)) => self.evaluate(expr, self_ref),
         }
+    }
+
+    fn evaluate_self(self_ref: Option<Value<'ast, 'a>>) -> Value<'ast, 'a> {
+        self_ref
+            .clone()
+            .expect("self does not exist in current scope")
     }
 }

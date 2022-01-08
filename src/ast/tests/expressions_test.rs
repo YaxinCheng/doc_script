@@ -308,7 +308,7 @@ fn test_attribute_access_from_internal() {
     "#;
     let expression = find_first_expression(program).expect("Expression expected");
     let expected = Expression::FieldAccess {
-        receiver: Box::new(Expression::ConstUse(Name::simple("$self"))),
+        receiver: Box::new(Expression::SelfRef(None)),
         field_names: vec!["id", "number"],
     };
     assert_eq!(expression, expected)
@@ -324,7 +324,7 @@ fn test_field_access_from_internal() {
         "#;
     let expression = find_first_expression(program).expect("Expression expected");
     let expected = Expression::FieldAccess {
-        receiver: Box::new(Expression::ConstUse(Name::simple("$self"))),
+        receiver: Box::new(Expression::SelfRef(None)),
         field_names: vec!["id", "number"],
     };
     assert_eq!(expression, expected)

@@ -4,6 +4,7 @@ use super::{Name, Parameter, Statement};
 use super::{Node, NodeKind};
 use crate::ast::scoped_elements::Block;
 use crate::ast::StructInitContent;
+use crate::env::scope::ScopeId;
 use crate::search::{BreadthFirst, DepthFirst};
 use crate::tokenizer::{LiteralKind, Token, TokenKind};
 #[cfg(test)]
@@ -18,25 +19,93 @@ pub struct Accessor<'a> {
 #[cfg_attr(test, derive(EnumAsInner))]
 #[derive(Debug, Eq, PartialEq)]
 pub enum Expression<'a> {
+    /// Block expression: a group of statements
+    ///
+    /// The type and value of a block depends on the
+    /// last statement
+    ///
+    /// # Example:
+    /// ```doc_script
+    /// const example = {
+    ///     const b = 42
+    ///     b
+    /// }
+    /// ```
     Block(Block<'a>),
+    /// Struct construction/initialization
+    ///
+    /// The value is a an instance of given struct
+    ///
+    /// # Example
+    /// ```doc_script
+    /// const example = Essay(author: "Yaxin Cheng") {
+    ///     Title("body1")
+    ///     Body {
+    ///         Paragraph("first paragraph")
+    ///         Paragraph("second paragraph")
+    ///     }
+    /// }
+    /// ```
     StructInit {
         name: Name<'a>,
         parameters: Vec<Parameter<'a>>,
         init_content: Option<StructInitContent<'a>>,
     },
-    Literal {
-        kind: LiteralKind,
-        lexeme: &'a str,
-    },
+    /// Literal data
+    ///
+    /// # Example
+    /// ```doc_script
+    /// const integer = 1
+    /// const string = "string"
+    /// const float = 3.14
+    /// const boolean = true
+    /// ```
+    Literal { kind: LiteralKind, lexeme: &'a str },
+    /// A way to create new instance based on an existing instance
+    ///
+    /// The value of this expression is a new instance with the same
+    /// struct type but different field
+    ///
+    /// # Example
+    /// ```doc_script
+    /// const my_essay = Essay(author: "Yaxin Cheng")
+    /// const example = my_essay.author("Y.Cheng")
+    /// ```
     ChainingMethodInvocation {
         receiver: Box<Expression<'a>>,
         accessors: Vec<Accessor<'a>>,
     },
+    /// Use the value of a constant
+    ///
+    /// # Example
+    /// ```doc_script
+    /// const PI = 3.14
+    /// const example = PI
+    /// ```
     ConstUse(Name<'a>),
+    /// Access field or attribute data from an instance
+    ///
+    /// # Example
+    /// ```doc_script
+    /// const essay = Essay(author: "Yaxin Cheng")
+    /// const example = essay.author
+    /// ```
     FieldAccess {
         receiver: Box<Expression<'a>>,
         field_names: Vec<&'a str>,
     },
+    /// Reference to the current instance.
+    /// Can only be used inside a struct body.
+    ///
+    /// The scope id records the scope this expression appears
+    ///
+    /// # Example
+    /// ```doc_script
+    /// struct Essay(author: String) {
+    ///     const example = self.author
+    /// }
+    /// ```
+    SelfRef(Option<ScopeId>),
 }
 
 impl<'a> From<Node<'a>> for Expression<'a> {
@@ -68,7 +137,7 @@ impl<'a> Expression<'a> {
             Node::Leaf(Token {
                 kind: TokenKind::Keyword,
                 lexeme: "self",
-            }) => Expression::ConstUse(Name::simple("$self")),
+            }) => Expression::SelfRef(None),
             Node::Leaf(_) => {
                 Expression::from(children.pop().expect("Bracketed expression expected"))
             }
