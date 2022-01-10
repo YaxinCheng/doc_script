@@ -330,6 +330,31 @@ fn test_field_access_from_internal() {
     assert_eq!(expression, expected)
 }
 
+#[test]
+fn test_chaining_method_from_internal() {
+    let program = r#"
+    struct Id(number: Int)
+    struct Person(id: Id) {
+        const identifier = self.id.number(42)
+    }
+    "#;
+    let expression = find_first_expression(program).expect("Expression expected");
+    let expected = Expression::ChainingMethodInvocation {
+        receiver: Box::new(Expression::FieldAccess {
+            receiver: Box::new(Expression::SelfRef(None)),
+            field_names: vec!["id"],
+        }),
+        accessors: vec![Accessor {
+            identifier: "number",
+            value: Some(Expression::Literal {
+                kind: LiteralKind::Integer,
+                lexeme: "42",
+            }),
+        }],
+    };
+    assert_eq!(expression, expected)
+}
+
 fn find_first_expression(program: &str) -> Option<Expression> {
     let parse_tree = parse(tokenize(program));
     BreadthFirst::find(

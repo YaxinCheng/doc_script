@@ -71,7 +71,7 @@ fn test_chaining_method_from_constant() {
         
         const people = People("test");
         // needs bracket, because otherwise it will be recognized as type
-        const debug_people = (people).name("debug")
+        const debug_people = people.name("debug")
         "#,
     )
 }

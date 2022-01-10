@@ -46,6 +46,16 @@ pub enum Expression<'a> {
     ///     }
     /// }
     /// ```
+    /// StructInit was created as a combination of two cases,
+    /// which will later be separated (see /src/env/construction/subdivide_struct_init.rs)
+    ///
+    /// Briefly, during ast creation, there is no way to distinguish:
+    /// 1. module.submodule.Struct()
+    /// 2. module.constant.field()
+    ///
+    /// Therefore, the distinguish work is left to when environment is initially constructed.
+    ///
+    /// After the subdivision, StructInit only keeps the case of creating through constructor
     StructInit {
         name: Name<'a>,
         parameters: Vec<Parameter<'a>>,
@@ -324,22 +334,32 @@ impl<'a> Expression<'a> {
 
     fn field_access(node: Node<'a>) -> Expression<'a> {
         let mut children = check_unpack!(node, NodeKind::FieldAccess);
-        let field_names = children
+        let field_name = children
             .pop()
-            .map(Name::from)
-            .expect("FieldAccess ends with Name")
-            .moniker
-            .as_slice()
-            .to_vec();
+            .and_then(|node| node.token())
+            .map(|token| token.lexeme)
+            .expect("Field Name");
         let _dot = children.pop();
         debug_check! { _dot, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "." })) };
         let receiver = children
             .pop()
             .map(Expression::from)
             .expect("FieldAccess should have an receiver");
-        Expression::FieldAccess {
-            receiver: Box::new(receiver),
-            field_names,
+        match receiver {
+            Expression::FieldAccess {
+                receiver,
+                mut field_names,
+            } => {
+                field_names.push(field_name);
+                Expression::FieldAccess {
+                    receiver,
+                    field_names,
+                }
+            }
+            receiver => Expression::FieldAccess {
+                receiver: Box::new(receiver),
+                field_names: vec![field_name],
+            },
         }
     }
 }

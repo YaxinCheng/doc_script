@@ -52,4 +52,10 @@ impl<'a> Parameter<'a> {
             Parameter::Plain(content) | Parameter::Labelled { label: _, content } => content,
         }
     }
+
+    pub fn expression_owned(self) -> Expression<'a> {
+        match self {
+            Parameter::Plain(content) | Parameter::Labelled { label: _, content } => content,
+        }
+    }
 }
