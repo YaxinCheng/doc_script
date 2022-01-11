@@ -1,25 +1,22 @@
 use super::{resolve_helper::ResolveHelper, Resolved};
-use crate::ast::{Moniker, Name, StructDeclaration};
+use crate::ast::{Moniker, Name};
 use crate::env::scope::Scoped;
 use crate::env::Environment;
 
 pub struct TypeLinker<'ast, 'a, 'env>(pub &'env mut Environment<'ast, 'a>);
 
-type TypeDeclaration<'a> = StructDeclaration<'a>;
-
 impl<'ast, 'a, 'env> TypeLinker<'ast, 'a, 'env> {
     pub fn link_types<I: IntoIterator<Item = &'ast Name<'a>>>(self, names: I) {
         for type_name in names {
-            let type_declaration = self.link_type(type_name);
-            if let Some(type_declaration) = type_declaration {
+            if let Some(type_declaration) = self.link_type(type_name) {
                 self.0
                     .resolved_names
-                    .insert(type_name.clone(), Resolved::Struct(type_declaration));
+                    .insert(type_name.clone(), type_declaration);
             } else if !Self::is_primitive_type(type_name) {
                 if let Some(type_declaration) = self.link_type_in_module(type_name) {
                     self.0
                         .resolved_names
-                        .insert(type_name.clone(), Resolved::Struct(type_declaration));
+                        .insert(type_name.clone(), type_declaration);
                 } else {
                     panic!("Failed to resolve type name: `{}`", type_name)
                 }
@@ -27,11 +24,11 @@ impl<'ast, 'a, 'env> TypeLinker<'ast, 'a, 'env> {
         }
     }
 
-    fn link_type(&self, name: &'ast Name<'a>) -> Option<&'ast TypeDeclaration<'a>> {
+    fn link_type(&self, name: &'ast Name<'a>) -> Option<Resolved<'ast, 'a>> {
         ResolveHelper(self.0)
             .resolve(name.scope(), &name.moniker)
             .map(|resolved| match resolved {
-                Resolved::Struct(struct_type) => struct_type,
+                Resolved::Struct(_) | Resolved::Trait(_) => resolved,
                 Resolved::InstanceAccess(_, _) => {
                     panic!("Type name `{}` resolved to field access", name)
                 }
@@ -40,10 +37,10 @@ impl<'ast, 'a, 'env> TypeLinker<'ast, 'a, 'env> {
             })
     }
 
-    fn link_type_in_module(&self, name: &'ast Name<'a>) -> Option<&'ast TypeDeclaration<'a>> {
+    fn link_type_in_module(&self, name: &'ast Name<'a>) -> Option<Resolved<'ast, 'a>> {
         let resolved = ResolveHelper(self.0).disambiguate(name);
         match resolved {
-            Resolved::Struct(struct_declaration) => Some(struct_declaration),
+            Resolved::Struct(_) => Some(resolved),
             _ => None,
         }
     }
@@ -51,7 +48,7 @@ impl<'ast, 'a, 'env> TypeLinker<'ast, 'a, 'env> {
     fn is_primitive_type(name: &'ast Name<'a>) -> bool {
         matches!(
             name.moniker,
-            Moniker::Simple("Int" | "Float" | "String" | "Bool")
+            Moniker::Simple("Int" | "Float" | "String" | "Bool" | "()")
         )
     }
 }

@@ -1,5 +1,5 @@
 use super::super::scope::ScopeId;
-use crate::ast::{ConstantDeclaration, StructDeclaration};
+use crate::ast::{ConstantDeclaration, StructDeclaration, TraitDeclaration};
 use crate::env::scope::DeclaredElement;
 #[cfg(test)]
 use enum_as_inner::EnumAsInner;
@@ -10,6 +10,7 @@ pub enum Resolved<'ast, 'a> {
     Module(ScopeId),
     Constant(&'ast ConstantDeclaration<'a>),
     Struct(&'ast StructDeclaration<'a>),
+    Trait(&'ast TraitDeclaration<'a>),
     InstanceAccess(&'ast ConstantDeclaration<'a>, Vec<&'a str>),
 }
 
@@ -18,6 +19,7 @@ impl<'ast, 'a> From<DeclaredElement<'ast, 'a>> for Resolved<'ast, 'a> {
         match declared {
             DeclaredElement::Struct(r#struct) => Self::Struct(r#struct),
             DeclaredElement::Constant(constant) => Self::Constant(constant),
+            DeclaredElement::Trait(r#trait) => Self::Trait(r#trait),
         }
     }
 }

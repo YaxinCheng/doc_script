@@ -1,10 +1,11 @@
 use super::super::typed_element::TypedElement;
 use super::super::types::Types;
 use super::struct_init_checker::StructInitChecker;
+use super::type_conform_checker::TypeConformChecker;
 use super::type_resolver;
 use crate::ast::{
     AbstractSyntaxTree, Accessor, Block, ConstantDeclaration, Declaration, Expression, Field, Name,
-    Parameter, Statement, StructDeclaration, StructInitContent,
+    Parameter, Statement, StructDeclaration, StructInitContent, TraitDeclaration,
 };
 use crate::env::address_hash::hash;
 use crate::env::environment::Resolved;
@@ -17,7 +18,7 @@ hash!(Field);
 hash!(Expression);
 
 pub(in crate::env) struct TypeChecker<'ast, 'a, 'env> {
-    environment: &'env Environment<'ast, 'a>,
+    pub(in crate::env::name_resolution::type_checking) environment: &'env Environment<'ast, 'a>,
     resolved_expressions: HashMap<&'ast Expression<'a>, Types<'ast, 'a>>,
     resolved_fields: HashMap<&'ast Field<'a>, Types<'ast, 'a>>,
     resolved_instance_fields: HashMap<Name<'a>, Types<'ast, 'a>>,
@@ -49,11 +50,15 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
                 self.resolve_expression(&constant.value);
             }
             Declaration::Struct(r#struct) => self.resolve_struct(r#struct),
+            Declaration::Trait(r#trait) => self.resolve_trait(r#trait),
             Declaration::Import(_) => (), // do nothing for import
         }
     }
 
-    fn resolve_expression(&mut self, expression: &'ast Expression<'a>) -> Types<'ast, 'a> {
+    pub(in crate::env::name_resolution::type_checking) fn resolve_expression(
+        &mut self,
+        expression: &'ast Expression<'a>,
+    ) -> Types<'ast, 'a> {
         if let Some(resolved_type) = self.resolved_expressions.get(&expression) {
             return *resolved_type;
         }
@@ -108,6 +113,9 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
             Resolved::Module(_) => panic!("Cannot assign module `{}` to constant", name),
             Resolved::Struct(struct_type) => {
                 panic!("Cannot assign struct `{}` to constant", struct_type.name)
+            }
+            Resolved::Trait(trait_type) => {
+                panic!("Cannot assign trait `{}` to constant", trait_type.name)
             }
         };
         self.checking_expression.remove(name);
@@ -165,8 +173,8 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
             .iter()
             .map(|parameter| self.resolve_expression(parameter.expression()))
             .collect::<Vec<_>>();
-        StructInitChecker::with_fields(fields, field_types)
-            .check_parameters(parameters, parameter_types)
+        StructInitChecker(TypeConformChecker(self))
+            .check_parameters(parameters, parameter_types, fields, field_types)
             .expect("Failed struct field type check");
         init_content
             .iter()
@@ -197,11 +205,12 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
             let field_type = self.resolve_field(field);
             if let Some(value) = &accessor.value {
                 let argument_type = self.resolve_expression(value);
-                assert_eq!(
-                    argument_type, field_type,
-                    "Expect type: `{:?}`\nFound type: `{:?}`, on access .{}",
-                    field_type, argument_type, accessor.identifier
-                );
+                if !TypeConformChecker(self).conforms(&argument_type, &field_type) {
+                    panic!(
+                        "Expect type: `{:?}`\nFound type: `{:?}`, on access .{}",
+                        field_type, argument_type, accessor.identifier
+                    );
+                }
             } else {
                 assert!(
                     field.default_value.is_some(),
@@ -231,6 +240,12 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
         }
     }
 
+    fn resolve_trait(&mut self, r#trait: &'ast TraitDeclaration<'a>) {
+        for field in &r#trait.required {
+            self.resolve_field(field);
+        }
+    }
+
     fn resolve_field(&mut self, field: &'ast Field<'a>) -> Types<'ast, 'a> {
         if let Some(resolved_type) = self.resolved_fields.get(&field) {
             return *resolved_type;
@@ -239,11 +254,12 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
             .unwrap_or_else(|| panic!("Field type `{}` is invalid", field.field_type.0));
         if let Some(default_value) = &field.default_value {
             let value_type = self.resolve_expression(default_value);
-            assert_eq!(
-                expected_type, value_type,
-                "Field default value has a different type.\nExpected: {:?}\nFound: {:?}\n",
-                expected_type, value_type
-            )
+            if !TypeConformChecker(self).conforms(&value_type, &expected_type) {
+                panic!(
+                    "Field default value has a different type.\nExpected: {:?}\nFound: {:?}\n",
+                    expected_type, value_type
+                )
+            }
         }
         let existing = self.resolved_fields.insert(field, expected_type);
         debug_assert!(

@@ -1,11 +1,11 @@
+use super::type_conform_checker::TypeConformChecker;
 use crate::ast::{Field, Parameter};
 use crate::env::name_resolution::types::Types;
 use std::collections::{HashMap, VecDeque};
 
-pub struct StructInitChecker<'ast, 'a> {
-    fields: &'ast [Field<'a>],
-    field_types: Vec<Types<'ast, 'a>>,
-}
+pub struct StructInitChecker<'ast, 'a, 'env, 'checker>(
+    pub(in crate::env::name_resolution) TypeConformChecker<'ast, 'a, 'env, 'checker>,
+);
 
 #[cfg_attr(test, derive(Eq, PartialEq))]
 #[derive(thiserror::Error, Debug)]
@@ -22,42 +22,39 @@ pub enum Error {
     },
 }
 
-impl<'ast, 'a> StructInitChecker<'ast, 'a> {
-    pub fn with_fields(fields: &'ast [Field<'a>], field_types: Vec<Types<'ast, 'a>>) -> Self {
-        StructInitChecker {
-            fields,
-            field_types,
-        }
-    }
-
+impl<'ast, 'a, 'env, 'checker> StructInitChecker<'ast, 'a, 'env, 'checker> {
     pub fn check_parameters(
-        &self,
+        &mut self,
         parameters: &[Parameter<'a>],
         parameter_types: Vec<Types<'ast, 'a>>,
+        fields: &'ast [Field<'a>],
+        field_types: Vec<Types<'ast, 'a>>,
     ) -> Result<(), Error> {
-        if parameters.len() > self.fields.len() {
+        if parameters.len() > fields.len() {
             Err(Error::TooManyField {
-                expected: self.fields.len(),
+                expected: fields.len(),
                 found: parameters.len(),
             })
         } else if parameters.is_empty() {
-            if self.fields.is_empty() || self.fields[0].default_value.is_some() {
+            if fields.is_empty() || fields[0].default_value.is_some() {
                 Ok(())
             } else {
-                let mandatory_field = &self.fields[0];
+                let mandatory_field = &fields[0];
                 Err(Error::FieldNotSupplied(mandatory_field.name.to_owned()))
             }
         } else if parameters[0].is_labelled() {
-            self.check_labelled_parameters(parameters, &parameter_types)
+            self.check_labelled_parameters(parameters, &parameter_types, fields, field_types)
         } else {
-            self.check_plain_parameters(parameter_types)
+            self.check_plain_parameters(parameter_types, fields, field_types)
         }
     }
 
     fn check_labelled_parameters(
-        &self,
+        &mut self,
         parameters: &[Parameter],
         parameter_types: &[Types<'ast, 'a>],
+        fields: &'ast [Field<'a>],
+        field_types: Vec<Types<'ast, 'a>>,
     ) -> Result<(), Error> {
         let parameter_types = parameters
             .iter()
@@ -67,9 +64,9 @@ impl<'ast, 'a> StructInitChecker<'ast, 'a> {
             })
             .zip(parameter_types)
             .collect::<HashMap<_, _>>();
-        for (field, field_type) in self.fields.iter().zip(&self.field_types) {
+        for (field, field_type) in fields.iter().zip(&field_types) {
             if let Some(parameter_type) = parameter_types.get(field.name) {
-                if *parameter_type != field_type {
+                if !self.0.conforms(parameter_type, field_type) {
                     return Err(Error::TypeMismatch {
                         field: field.name.to_owned(),
                         expected: format!("{:?}", field_type),
@@ -83,15 +80,20 @@ impl<'ast, 'a> StructInitChecker<'ast, 'a> {
         Ok(())
     }
 
-    fn check_plain_parameters(&self, parameter_types: Vec<Types<'ast, 'a>>) -> Result<(), Error> {
+    fn check_plain_parameters(
+        &mut self,
+        parameter_types: Vec<Types<'ast, 'a>>,
+        fields: &'ast [Field<'a>],
+        field_types: Vec<Types<'ast, 'a>>,
+    ) -> Result<(), Error> {
         let mut parameter_types = VecDeque::from(parameter_types);
-        for (field, expected_type) in self.fields.iter().zip(&self.field_types) {
+        for (field, expected_type) in fields.iter().zip(&field_types) {
             if parameter_types.is_empty() {
                 return match field.default_value {
                     Some(_) => Ok(()),
                     None => Err(Error::FieldNotSupplied(field.name.to_owned())),
                 };
-            } else if expected_type == &parameter_types[0] {
+            } else if self.0.conforms(&parameter_types[0], expected_type) {
                 parameter_types.pop_front();
             } else if field.default_value.is_none() {
                 return Err(Error::TypeMismatch {
@@ -113,7 +115,10 @@ impl<'ast, 'a> StructInitChecker<'ast, 'a> {
 mod struct_init_checker_tests {
     use super::{Error, StructInitChecker};
     use crate::ast::{Expression, Field, Name, Parameter, Type};
+    use crate::env::name_resolution::type_checking::type_conform_checker::TypeConformChecker;
+    use crate::env::name_resolution::type_checking::TypeChecker;
     use crate::env::name_resolution::types::Types;
+    use crate::env::Environment;
 
     fn field(name: &str, default_value: bool) -> Field {
         let default_value = match default_value {
@@ -220,8 +225,11 @@ mod struct_init_checker_tests {
         field_types: Vec<Types>,
         parameter_types: Vec<Types>,
     ) -> Result<(), Error> {
-        let type_checker = StructInitChecker::with_fields(&fields, field_types);
-        type_checker.check_plain_parameters(parameter_types)
+        let env = Environment::default();
+        let mut type_checker = TypeChecker::with_environment(&env);
+        let type_conform_checker = TypeConformChecker(&mut type_checker);
+        let mut struct_init_checker = StructInitChecker(type_conform_checker);
+        struct_init_checker.check_plain_parameters(parameter_types, &fields, field_types)
     }
 
     #[test]
@@ -298,8 +306,15 @@ mod struct_init_checker_tests {
     fn test_too_many_parameters() {
         let fields = vec![field("field1", false)];
         let parameters = vec![parameter("field1"), parameter("field2")];
-        let check_res = StructInitChecker::with_fields(&fields, vec![Types::Int])
-            .check_parameters(&parameters, vec![Types::Int, Types::String]);
+        let env = Environment::default();
+        let mut type_checker = TypeChecker::with_environment(&env);
+        let type_conform_checker = TypeConformChecker(&mut type_checker);
+        let check_res = StructInitChecker(type_conform_checker).check_parameters(
+            &parameters,
+            vec![Types::Int, Types::String],
+            &fields,
+            vec![Types::Int],
+        );
         assert_eq!(
             check_res,
             Err(Error::TooManyField {
@@ -313,8 +328,15 @@ mod struct_init_checker_tests {
     fn test_empty_input() {
         let fields = vec![field("field1", false), field("field2", false)];
         let parameters = vec![];
-        let check_res = StructInitChecker::with_fields(&fields, vec![Types::Int, Types::String])
-            .check_parameters(&parameters, vec![]);
+        let env = Environment::default();
+        let mut type_checker = TypeChecker::with_environment(&env);
+        let type_conform_checker = TypeConformChecker(&mut type_checker);
+        let check_res = StructInitChecker(type_conform_checker).check_parameters(
+            &parameters,
+            vec![],
+            &fields,
+            vec![Types::Int, Types::String],
+        );
         assert_eq!(check_res, Err(Error::FieldNotSupplied("field1".into())))
     }
 
@@ -331,7 +353,14 @@ mod struct_init_checker_tests {
         parameters: Vec<Parameter>,
         parameter_types: Vec<Types>,
     ) -> Result<(), Error> {
-        StructInitChecker::with_fields(&fields, field_types)
-            .check_labelled_parameters(&parameters, &parameter_types)
+        let env = Environment::default();
+        let mut type_checker = TypeChecker::with_environment(&env);
+        let type_conform_checker = TypeConformChecker(&mut type_checker);
+        StructInitChecker(type_conform_checker).check_labelled_parameters(
+            &parameters,
+            &parameter_types,
+            &fields,
+            field_types,
+        )
     }
 }

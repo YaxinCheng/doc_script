@@ -13,6 +13,7 @@ pub(in crate::env) fn resolve_type_name<'ast, 'a>(
         .get(name)
         .map(|resolved| match resolved {
             Resolved::Struct(r#struct) => Types::Struct(r#struct),
+            Resolved::Trait(r#trait) => Types::Trait(r#trait),
             _ => panic!("Type is not valid"),
         })
         .or_else(|| primitive_type(name))

@@ -1,5 +1,7 @@
 use super::{construct_env, try_block};
-use crate::ast::{abstract_tree, ConstantDeclaration, Expression, StructDeclaration};
+use crate::ast::{
+    abstract_tree, ConstantDeclaration, Expression, StructDeclaration, TraitDeclaration,
+};
 use crate::env::name_resolution::types::Types;
 use crate::env::name_resolution::TypeChecker;
 use crate::env::Environment;
@@ -298,4 +300,64 @@ fn test_self_type() {
         TypeChecker::with_environment(&env).test_resolve_expression(&target_constant.value);
     let expected = Types::Struct(target_struct);
     assert_eq!(actual, expected)
+}
+
+#[test]
+fn test_access_field_with_trait_type() {
+    let program = r#"
+    trait Trait(value: Int)
+    struct Impl(value: Int)
+    struct TestType(field: Trait)
+    const test = TestType(Impl(42)).field
+    "#;
+    let module_paths = vec![vec![]];
+    let mut syntax_trees = [abstract_tree(parse(tokenize(program)))];
+    let env = Environment::builder()
+        .add_modules(&module_paths)
+        .generate_scopes(&mut syntax_trees)
+        .resolve_names(&syntax_trees)
+        .build();
+
+    let trait_declaration = try_block!(
+        &TraitDeclaration,
+        syntax_trees
+            .first()?
+            .compilation_unit
+            .declarations
+            .first()?
+            .as_trait()
+    )
+    .unwrap();
+    let target_constant = try_block!(
+        &ConstantDeclaration,
+        syntax_trees
+            .first()?
+            .compilation_unit
+            .declarations
+            .last()?
+            .as_constant()
+    )
+    .unwrap();
+    let actual =
+        TypeChecker::with_environment(&env).test_resolve_expression(&target_constant.value);
+    let expected = Types::Trait(trait_declaration);
+    assert_eq!(actual, expected)
+}
+
+#[test]
+#[should_panic]
+fn access_undeclared_field_from_trait() {
+    let program = r#"
+    trait Trait(value: Int)
+    struct Impl(value: Int, hidden: String)
+    struct TestType(field: Trait)
+    const test = TestType(Impl(42)).hidden
+    "#;
+    let module_paths = vec![vec![]];
+    let mut syntax_trees = [abstract_tree(parse(tokenize(program)))];
+    let _env = Environment::builder()
+        .add_modules(&module_paths)
+        .generate_scopes(&mut syntax_trees)
+        .resolve_names(&syntax_trees)
+        .build();
 }

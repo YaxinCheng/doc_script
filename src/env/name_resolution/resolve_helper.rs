@@ -97,6 +97,7 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
                 Resolved::Constant(constant) => {
                     return Resolved::InstanceAccess(constant, access_iter.copied().collect())
                 }
+                Resolved::Trait(_) => panic!("Cannot access field from trait type definition"),
                 Resolved::Struct(_) => panic!("Cannot access field from struct type definition"),
                 Resolved::InstanceAccess { .. } => {
                     unreachable!("Field cannot be found at this stage")

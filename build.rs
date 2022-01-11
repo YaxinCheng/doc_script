@@ -220,7 +220,7 @@ fn terminals_to_token_kind(s: &str) -> Option<&str> {
         "BinaryLiteral" => "Literal(LiteralKind::Binary)",
         "HexLiteral" => "Literal(LiteralKind::Hex)",
         "break" | "default" | "const" | "continue" | "else" | "for" | "fn" | "if" | "impl"
-        | "return" | "super" | "struct" | "self" | "use" => "Keyword",
+        | "return" | "super" | "struct" | "self" | "use" | "trait" => "Keyword",
         "(" | ")" | "{" | "}" | "[" | "]" | ";" | "," | "." | ":" => "Separator",
         "=" | "==" | ">" | ">=" | ">>" | ">>=" | "<" | "<=" | "<<" | "<<=" | "!" | "!=" | "~"
         | "+" | "+=" | "-" | "-=" | "*" | "*=" | "/" | "/=" | "&" | "&&" | "&=" | "|" | "||"

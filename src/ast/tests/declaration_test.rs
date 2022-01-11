@@ -1,5 +1,6 @@
 use crate::ast::{
-    ConstantDeclaration, Declaration, Expression, Field, Name, StructDeclaration, Type,
+    ConstantDeclaration, Declaration, Expression, Field, Name, StructDeclaration, TraitDeclaration,
+    Type,
 };
 use crate::parser::{parse, NodeKind};
 use crate::search::DepthFirst;
@@ -177,6 +178,62 @@ fn get_struct(program: &str) -> Declaration {
     DepthFirst::find(
         parse_tree.root,
         |node| matches!(node.kind(), Some(NodeKind::StructDeclarationStatement)),
+        |node| node.children().unwrap_or_default(),
+    )
+    .map(Declaration::from)
+    .next()
+    .expect("Unable to find StructDeclarationStatement")
+}
+
+#[test]
+fn test_trait_declaration_empty_no_bracket() {
+    let program = "trait Trait\n";
+    let actual = get_trait(program);
+    let expected = Declaration::Trait(TraitDeclaration {
+        name: "Trait",
+        required: vec![],
+    });
+    assert_eq!(actual, expected)
+}
+
+#[test]
+fn test_trait_declaration_empty() {
+    let program = "trait Trait()\n";
+    let actual = get_trait(program);
+    let expected = Declaration::Trait(TraitDeclaration {
+        name: "Trait",
+        required: vec![],
+    });
+    assert_eq!(actual, expected)
+}
+
+#[test]
+fn test_trait_declaration_fields() {
+    let program = "trait Trait(first: Int, second: String)\n";
+    let actual = get_trait(program);
+    let expected = Declaration::Trait(TraitDeclaration {
+        name: "Trait",
+        required: vec![
+            Field {
+                name: "first",
+                field_type: Type(Name::simple("Int")),
+                default_value: None,
+            },
+            Field {
+                name: "second",
+                field_type: Type(Name::simple("String")),
+                default_value: None,
+            },
+        ],
+    });
+    assert_eq!(actual, expected)
+}
+
+fn get_trait(program: &str) -> Declaration {
+    let parse_tree = parse(tokenize(program));
+    DepthFirst::find(
+        parse_tree.root,
+        |node| matches!(node.kind(), Some(NodeKind::TraitDeclarationStatement)),
         |node| node.children().unwrap_or_default(),
     )
     .map(Declaration::from)

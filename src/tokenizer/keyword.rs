@@ -15,6 +15,7 @@ pub fn is_keyword(s: &str) -> bool {
             | "struct"
             | "self"
             | "use"
+            | "trait"
     )
 }
 
@@ -24,7 +25,7 @@ mod keyword_tests {
 
     const KEYWORDS: &[&str] = &[
         "break", "const", "continue", "default", "else", "for", "fn", "if", "impl", "return",
-        "super", "struct", "self", "use",
+        "super", "struct", "self", "use", "trait",
     ];
 
     #[test]

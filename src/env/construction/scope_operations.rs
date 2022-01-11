@@ -3,7 +3,7 @@ use super::subdivide_struct_init;
 use super::Environment;
 use crate::ast::{
     AbstractSyntaxTree, ConstantDeclaration, Declaration, Expression, Parameter, Statement,
-    StructDeclaration,
+    StructDeclaration, TraitDeclaration,
 };
 
 pub(in crate::env) struct ScopeGenerator<'ast, 'a, 'env>(pub &'env mut Environment<'ast, 'a>);
@@ -39,7 +39,8 @@ impl<'ast, 'a, 'env> ScopeGenerator<'ast, 'a, 'env> {
             Declaration::Struct(r#struct) => {
                 self.generate_for_struct_declaration(r#struct, scope_id)
             }
-            _ => (), // import does not need a scope
+            Declaration::Trait(r#trait) => self.generate_for_trait_declaration(r#trait, scope_id),
+            Declaration::Import(_) => (), // import does not need a scope
         }
     }
 
@@ -137,6 +138,16 @@ impl<'ast, 'a, 'env> ScopeGenerator<'ast, 'a, 'env> {
             for declaration in body.attributes.iter_mut() {
                 self.generate_for_constant(declaration, body_scope)
             }
+        }
+    }
+
+    fn generate_for_trait_declaration(
+        &mut self,
+        r#trait: &mut TraitDeclaration<'a>,
+        scope_id: ScopeId,
+    ) {
+        for required_field in &mut r#trait.required {
+            required_field.field_type.0.set_scope(scope_id)
         }
     }
 }

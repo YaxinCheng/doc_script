@@ -1,4 +1,4 @@
-use crate::ast::{ConstantDeclaration, StructDeclaration};
+use crate::ast::{ConstantDeclaration, StructDeclaration, TraitDeclaration};
 #[cfg(test)]
 use enum_as_inner::EnumAsInner;
 use std::collections::{HashMap, HashSet};
@@ -52,6 +52,7 @@ pub struct NameSpaces<'ast, 'a> {
 pub enum DeclaredElement<'ast, 'a> {
     Constant(&'ast ConstantDeclaration<'a>),
     Struct(&'ast StructDeclaration<'a>),
+    Trait(&'ast TraitDeclaration<'a>),
 }
 
 impl<'ast, 'a> From<&'ast ConstantDeclaration<'a>> for DeclaredElement<'ast, 'a> {
@@ -63,5 +64,11 @@ impl<'ast, 'a> From<&'ast ConstantDeclaration<'a>> for DeclaredElement<'ast, 'a>
 impl<'ast, 'a> From<&'ast StructDeclaration<'a>> for DeclaredElement<'ast, 'a> {
     fn from(structure: &'ast StructDeclaration<'a>) -> Self {
         Self::Struct(structure)
+    }
+}
+
+impl<'ast, 'a> From<&'ast TraitDeclaration<'a>> for DeclaredElement<'ast, 'a> {
+    fn from(structure: &'ast TraitDeclaration<'a>) -> Self {
+        Self::Trait(structure)
     }
 }

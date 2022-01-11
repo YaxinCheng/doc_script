@@ -87,9 +87,18 @@ impl<'a> StructDeclaration<'a> {
         }
         let _close_bracket = children.pop();
         debug_check! { _close_bracket, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: ")" })) }
-        let fields = children.pop().expect("Expect Fields");
+        let fields = children
+            .pop()
+            .map(Self::find_all_fields)
+            .expect("Expect Fields");
+        let _open_bracket = children.pop();
+        debug_check! { _open_bracket, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "(" })) };
+        fields
+    }
+
+    fn find_all_fields(fields_node: Node<'a>) -> Vec<Field<'a>> {
         let fields = DepthFirst::find(
-            fields,
+            fields_node,
             |node| {
                 matches!(
                     node.kind(),
@@ -105,8 +114,6 @@ impl<'a> StructDeclaration<'a> {
         .map(Field::from)
         .collect::<Vec<_>>();
         weeder::fields::weed(&fields);
-        let _open_bracket = children.pop();
-        debug_check! { _open_bracket, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "(" })) };
         fields
     }
 }
@@ -133,5 +140,51 @@ impl<'a> From<Node<'a>> for StructInitContent<'a> {
 impl<'a> From<Vec<Expression<'a>>> for StructInitContent<'a> {
     fn from(expressions: Vec<Expression<'a>>) -> Self {
         Self(expressions)
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct TraitDeclaration<'a> {
+    pub name: &'a str,
+    pub required: Vec<Field<'a>>,
+}
+
+impl<'a> From<Node<'a>> for TraitDeclaration<'a> {
+    fn from(node: Node<'a>) -> Self {
+        let mut children = check_unpack!(node, NodeKind::TraitDeclaration);
+        let required = children
+            .pop()
+            .map(Self::eat_fields)
+            .expect("TraitRequirement");
+        let name = children
+            .pop()
+            .and_then(|node| node.token())
+            .map(|token| token.lexeme)
+            .expect("Expect trait name");
+        Self { name, required }
+    }
+}
+
+impl<'a> TraitDeclaration<'a> {
+    fn eat_fields(requirement: Node<'a>) -> Vec<Field<'a>> {
+        let mut children = check_unpack!(requirement, NodeKind::TraitRequirement);
+        if children.is_empty() {
+            return vec![];
+        }
+        let _close_bracket = children.pop();
+        debug_check! { _close_bracket, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: ")" })) };
+        match children.pop() {
+            Some(Node::Leaf(Token {
+                kind: TokenKind::Separator,
+                lexeme: "(",
+            })) => vec![],
+            Some(fields_node) => {
+                let fields = StructDeclaration::find_all_fields(fields_node);
+                let _open_bracket = children.pop();
+                debug_check! { _open_bracket, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "(" })) };
+                fields
+            }
+            None => unreachable!("Brackets are balanced"),
+        }
     }
 }

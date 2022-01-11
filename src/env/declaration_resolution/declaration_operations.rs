@@ -1,6 +1,6 @@
 use crate::ast::{
     AbstractSyntaxTree, ConstantDeclaration, Declaration, Expression, Parameter, Statement,
-    StructDeclaration,
+    StructDeclaration, TraitDeclaration,
 };
 use crate::env::declaration_resolution::UnresolvedNames;
 use crate::env::scope::*;
@@ -39,7 +39,10 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
             Declaration::Struct(r#struct) => {
                 self.add_struct_declaration(r#struct, scope_id, seen_names)
             }
-            _ => (), // imports are ignored
+            Declaration::Trait(r#trait) => {
+                self.add_trait_declaration(r#trait, scope_id, seen_names)
+            }
+            Declaration::Import(_) => (), // imports are ignored
         }
     }
 
@@ -180,6 +183,27 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
             for declaration in &body.attributes {
                 self.add_constant(declaration, body_scope_id, seen_names)
             }
+        }
+    }
+
+    fn add_trait_declaration(
+        &mut self,
+        r#trait: &'ast TraitDeclaration<'a>,
+        scope_id: ScopeId,
+        seen_names: &mut UnresolvedNames<'ast, 'a>,
+    ) {
+        let scope = self.0.get_scope_mut(scope_id);
+        let duplicate_declaration = scope
+            .name_spaces
+            .declared
+            .insert(vec![r#trait.name], r#trait.into());
+        assert!(
+            duplicate_declaration.is_none(),
+            "Cannot redefine trait in the same module with name: {}",
+            r#trait.name
+        );
+        for required in &r#trait.required {
+            seen_names.type_names.insert(&required.field_type.0);
         }
     }
 }

@@ -1,4 +1,4 @@
-use crate::ast::{ConstantDeclaration, Field, StructDeclaration};
+use crate::ast::{ConstantDeclaration, Field, StructDeclaration, TraitDeclaration};
 use crate::env::name_resolution::typed_element::TypedElement;
 
 #[derive(Copy, Clone, Debug, Eq)]
@@ -9,6 +9,7 @@ pub enum Types<'ast, 'a> {
     Bool,
     String,
     Struct(&'ast StructDeclaration<'a>),
+    Trait(&'ast TraitDeclaration<'a>),
 }
 
 impl<'ast, 'a> PartialEq for Types<'ast, 'a> {
@@ -19,6 +20,7 @@ impl<'ast, 'a> PartialEq for Types<'ast, 'a> {
             (Struct(self_struct), Struct(other_struct)) => {
                 std::ptr::eq(*self_struct, *other_struct)
             }
+            (Trait(self_trait), Trait(other_trait)) => std::ptr::eq(*self_trait, *other_trait),
             _ => false,
         }
     }
@@ -33,9 +35,12 @@ impl<'ast, 'a> Types<'ast, 'a> {
 
     pub fn field(&self, name: &str) -> Option<&'ast Field<'a>> {
         match self {
-            Types::Struct(r#struct) => r#struct.fields.iter().find(|field| field.name == name),
-            _ => None,
+            Types::Struct(r#struct) => &r#struct.fields,
+            Types::Trait(r#trait) => &r#trait.required,
+            _ => None?,
         }
+        .iter()
+        .find(|field| field.name == name)
     }
 
     pub fn attribute(&self, name: &str) -> Option<&'ast ConstantDeclaration<'a>> {
@@ -52,6 +57,7 @@ impl<'ast, 'a> Types<'ast, 'a> {
     pub fn fields(&self) -> &'ast [Field<'a>] {
         match self {
             Self::Struct(struct_declaration) => &struct_declaration.fields,
+            Self::Trait(trait_declaration) => &trait_declaration.required,
             _ => &[],
         }
     }
