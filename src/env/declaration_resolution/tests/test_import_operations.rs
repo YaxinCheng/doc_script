@@ -48,7 +48,7 @@ fn assert_constant(env: &Environment, name: &str, scope_name: &[&str]) {
         .get_scope(GLOBAL_SCOPE)
         .name_spaces
         .declared
-        .get(&vec![name])
+        .get(name)
         .unwrap()
         .as_constant()
         .unwrap();
@@ -56,7 +56,7 @@ fn assert_constant(env: &Environment, name: &str, scope_name: &[&str]) {
         .get_scope(source_scope)
         .name_spaces
         .declared
-        .get(&vec![name])
+        .get(name)
         .unwrap()
         .as_constant()
         .unwrap();
@@ -83,13 +83,13 @@ fn assert_struct(env: &Environment, name: &str, scope_name: &[&str]) {
         .get_scope(GLOBAL_SCOPE)
         .name_spaces
         .declared
-        .get(&vec![name])
+        .get(name)
         .unwrap();
     let expected = *env
         .get_scope(source_scope)
         .name_spaces
         .declared
-        .get(&vec![name])
+        .get(name)
         .unwrap();
     assert_eq!(actual, expected)
 }

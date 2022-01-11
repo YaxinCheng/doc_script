@@ -1,7 +1,7 @@
 use super::super::scope::Scoped;
 use super::resolve_helper::ResolveHelper;
 use super::{Environment, Resolved};
-use crate::ast::Name;
+use crate::ast::{Moniker, Name};
 
 pub(in crate::env) struct NameResolver<'ast, 'a, 'env>(pub &'env mut Environment<'ast, 'a>);
 
@@ -20,7 +20,12 @@ impl<'ast, 'a, 'env> NameResolver<'ast, 'a, 'env> {
     }
 
     fn resolve_added_name(&mut self, name: &'ast Name<'a>) -> Option<Resolved<'ast, 'a>> {
-        ResolveHelper(self.0).resolve(name.scope(), &name.moniker)
+        match &name.moniker {
+            Moniker::Simple(simple_name) => {
+                ResolveHelper(self.0).resolve(name.scope(), simple_name)
+            }
+            _ => None,
+        }
     }
 
     fn disambiguate_name(&mut self, name: &'ast Name<'a>) -> Resolved<'ast, 'a> {

@@ -27,7 +27,7 @@ fn test_add_constant() {
         .get_scope(GLOBAL_SCOPE)
         .name_spaces
         .declared
-        .get(&vec!["a"])
+        .get("a")
         .expect("Failed to get from namespace")
         .into_constant()
         .unwrap();
@@ -59,7 +59,7 @@ fn test_add_struct_declaration() {
         .get_scope(GLOBAL_SCOPE)
         .name_spaces
         .declared
-        .get(&vec!["Text"])
+        .get("Text")
         .expect("Failed to find from namespace")
         .as_struct()
         .unwrap();

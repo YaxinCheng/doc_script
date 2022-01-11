@@ -12,7 +12,7 @@ pub fn generate_code(environment: &Environment) -> String {
 
 fn find_entry<'ast, 'a>(environment: &Environment<'ast, 'a>) -> &'ast ConstantDeclaration<'a> {
     let scope = environment.get_scope(GLOBAL_SCOPE);
-    match scope.name_spaces.declared.get(&vec!["Main"]) {
+    match scope.name_spaces.declared.get("Main") {
         Some(DeclaredElement::Constant(constant)) => constant,
         None => panic!("Main not declared in global scope"),
         Some(_) => panic!("Main should be declared as a constant"),

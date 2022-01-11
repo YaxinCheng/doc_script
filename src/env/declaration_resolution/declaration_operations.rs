@@ -53,7 +53,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
         seen_names: &mut UnresolvedNames<'ast, 'a>,
     ) {
         let scope = self.0.get_scope_mut(scope_id);
-        let constant_name = vec![constant.name];
+        let constant_name = constant.name;
         let duplicate_declaration = scope
             .name_spaces
             .declared
@@ -161,7 +161,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
         let duplicate_declaration = scope
             .name_spaces
             .declared
-            .insert(vec![r#struct.name], r#struct.into());
+            .insert(r#struct.name, r#struct.into());
         assert!(
             duplicate_declaration.is_none(),
             "Cannot redefine struct in the same module with name: {}",
@@ -179,7 +179,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
             body_scope
                 .name_spaces
                 .declared
-                .insert(vec!["$self"], r#struct.into());
+                .insert("$self", r#struct.into());
             for declaration in &body.attributes {
                 self.add_constant(declaration, body_scope_id, seen_names)
             }
@@ -196,7 +196,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
         let duplicate_declaration = scope
             .name_spaces
             .declared
-            .insert(vec![r#trait.name], r#trait.into());
+            .insert(r#trait.name, r#trait.into());
         assert!(
             duplicate_declaration.is_none(),
             "Cannot redefine trait in the same module with name: {}",

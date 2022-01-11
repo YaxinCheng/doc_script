@@ -44,7 +44,7 @@ impl<'ast, 'a> Scope<'ast, 'a> {
 pub struct NameSpaces<'ast, 'a> {
     pub modules: HashMap<&'a str, ScopeId>,
     pub wildcard_imports: HashSet<ScopeId>,
-    pub declared: HashMap<Vec<&'a str>, DeclaredElement<'ast, 'a>>,
+    pub declared: HashMap<&'a str, DeclaredElement<'ast, 'a>>,
 }
 
 #[cfg_attr(test, derive(Debug, EnumAsInner, Eq, PartialEq))]

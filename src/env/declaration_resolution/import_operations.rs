@@ -85,9 +85,8 @@ impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
             .find_module(module_path)
             .map(|scope_id| self.0.get_scope(scope_id))
             .unwrap_or_else(|| panic!("Failed to resolve module: {}", module_path.join(".")));
-        let element_name = vec![*last_element];
-        if let Some(declared) = scope.name_spaces.declared.get(&element_name) {
-            Importing::ExpressionOrStruct(*declared, element_name)
+        if let Some(declared) = scope.name_spaces.declared.get(last_element) {
+            Importing::ExpressionOrStruct(*declared, last_element)
         } else if let Some(&scope_id) = scope.name_spaces.modules.get(last_element) {
             Importing::Module(scope_id, last_element)
         } else {
@@ -99,7 +98,7 @@ impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
 enum Importing<'ast, 'a> {
     Wildcard(ScopeId, &'ast Name<'a>),
     Module(ScopeId, &'a str),
-    ExpressionOrStruct(DeclaredElement<'ast, 'a>, Vec<&'a str>),
+    ExpressionOrStruct(DeclaredElement<'ast, 'a>, &'a str),
 }
 
 impl<'ast, 'a> Importing<'ast, 'a> {
@@ -139,7 +138,7 @@ impl<'ast, 'a> Importing<'ast, 'a> {
     // constant or struct import can be shadowed
     fn import_expression(
         element: DeclaredElement<'ast, 'a>,
-        name: Vec<&'a str>,
+        name: &'a str,
         target_scope: &mut Scope<'ast, 'a>,
     ) {
         target_scope

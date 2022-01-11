@@ -123,7 +123,7 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
     }
 
     fn resolve_self(&self, scope: ScopeId) -> Types<'ast, 'a> {
-        match ResolveHelper(self.environment).resolve(scope, &["$self"]) {
+        match ResolveHelper(self.environment).resolve(scope, "$self") {
             Some(Resolved::Struct(struct_declaration)) => Types::Struct(struct_declaration),
             _ => panic!("self can only be used in structs"),
         }

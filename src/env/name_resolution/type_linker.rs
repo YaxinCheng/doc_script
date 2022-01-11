@@ -25,16 +25,20 @@ impl<'ast, 'a, 'env> TypeLinker<'ast, 'a, 'env> {
     }
 
     fn link_type(&self, name: &'ast Name<'a>) -> Option<Resolved<'ast, 'a>> {
-        ResolveHelper(self.0)
-            .resolve(name.scope(), &name.moniker)
-            .map(|resolved| match resolved {
-                Resolved::Struct(_) | Resolved::Trait(_) => resolved,
-                Resolved::InstanceAccess(_, _) => {
-                    panic!("Type name `{}` resolved to field access", name)
-                }
-                Resolved::Constant(_) => panic!("Type name `{}` resolved to constant", name),
-                Resolved::Module(_) => panic!("Type name `{}` resolved to module", name),
-            })
+        match &name.moniker {
+            Moniker::Simple(simple_name) => {
+                ResolveHelper(self.0).resolve(name.scope(), simple_name)
+            }
+            Moniker::Qualified(_) => Some(ResolveHelper(self.0).disambiguate(name)),
+        }
+        .map(|resolved| match resolved {
+            Resolved::Struct(_) | Resolved::Trait(_) => resolved,
+            Resolved::InstanceAccess(_, _) => {
+                panic!("Type name `{}` resolved to field access", name)
+            }
+            Resolved::Constant(_) => panic!("Type name `{}` resolved to constant", name),
+            Resolved::Module(_) => panic!("Type name `{}` resolved to module", name),
+        })
     }
 
     fn link_type_in_module(&self, name: &'ast Name<'a>) -> Option<Resolved<'ast, 'a>> {
@@ -46,9 +50,13 @@ impl<'ast, 'a, 'env> TypeLinker<'ast, 'a, 'env> {
     }
 
     fn is_primitive_type(name: &'ast Name<'a>) -> bool {
-        matches!(
-            name.moniker,
-            Moniker::Simple("Int" | "Float" | "String" | "Bool" | "()")
-        )
+        let is_primitive_name =
+            |name: &str| matches!(name, "Int" | "Float" | "String" | "Bool" | "()");
+        match &name.moniker {
+            Moniker::Simple(name) => is_primitive_name(name),
+            Moniker::Qualified(full_name) => {
+                full_name.len() == 2 && full_name[0] == "std" && is_primitive_name(full_name[1])
+            }
+        }
     }
 }
