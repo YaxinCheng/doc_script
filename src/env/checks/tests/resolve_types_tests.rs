@@ -1,9 +1,9 @@
-use super::{construct_env, try_block};
+use super::try_block;
 use crate::ast::{
     abstract_tree, ConstantDeclaration, Expression, StructDeclaration, TraitDeclaration,
 };
-use crate::env::name_resolution::types::Types;
-use crate::env::name_resolution::TypeChecker;
+use crate::env::checks::type_checking::types::Types;
+use crate::env::checks::type_checking::TypeChecker;
 use crate::env::Environment;
 use crate::parser::parse;
 use crate::tokenizer::{tokenize, LiteralKind};
@@ -35,7 +35,7 @@ fn test_bool() {
 
 fn test_literals(kind: LiteralKind, expected: Types) {
     let expression = Expression::Literal { kind, lexeme: "" };
-    let env = construct_env();
+    let env = Environment::default();
     let actual = TypeChecker::with_environment(&env).test_resolve_expression(&expression);
     assert_eq!(actual, expected)
 }
@@ -66,8 +66,7 @@ fn test_resolve_struct() {
                 .as_constant()?
                 .value
         )
-    )
-    .unwrap();
+    );
     let target_struct = try_block!(
         &StructDeclaration,
         syntax_trees
@@ -76,8 +75,7 @@ fn test_resolve_struct() {
             .declarations
             .first()?
             .as_struct()
-    )
-    .unwrap();
+    );
     let actual = TypeChecker::with_environment(&env).test_resolve_expression(target_expression);
     let expected = Types::Struct(target_struct);
     assert_eq!(actual, expected)
@@ -111,8 +109,7 @@ fn test_resolve_from_block() {
                 .as_constant()?
                 .value
         )
-    )
-    .unwrap();
+    );
     let actual = TypeChecker::with_environment(&env).test_resolve_expression(target_block);
     let expected = Types::Int;
     assert_eq!(actual, expected)
@@ -146,8 +143,7 @@ fn test_resolve_field_access_from_block() {
                 .as_constant()?
                 .value
         )
-    )
-    .unwrap();
+    );
     let actual = TypeChecker::with_environment(&env).test_resolve_expression(target_block);
     let expected = Types::String;
     assert_eq!(actual, expected)
@@ -257,8 +253,7 @@ fn test_type_access_internal(program: &str) {
             .as_ref()?
             .attributes
             .first()
-    )
-    .unwrap();
+    );
 
     let actual =
         TypeChecker::with_environment(&env).test_resolve_expression(&target_constant.value);
@@ -289,13 +284,11 @@ fn test_self_type() {
             .declarations
             .first()?
             .as_struct()
-    )
-    .unwrap();
+    );
     let target_constant = try_block!(
         &ConstantDeclaration,
         target_struct.body.as_ref()?.attributes.first()
-    )
-    .unwrap();
+    );
     let actual =
         TypeChecker::with_environment(&env).test_resolve_expression(&target_constant.value);
     let expected = Types::Struct(target_struct);
@@ -326,8 +319,7 @@ fn test_access_field_with_trait_type() {
             .declarations
             .first()?
             .as_trait()
-    )
-    .unwrap();
+    );
     let target_constant = try_block!(
         &ConstantDeclaration,
         syntax_trees
@@ -336,8 +328,7 @@ fn test_access_field_with_trait_type() {
             .declarations
             .last()?
             .as_constant()
-    )
-    .unwrap();
+    );
     let actual =
         TypeChecker::with_environment(&env).test_resolve_expression(&target_constant.value);
     let expected = Types::Trait(trait_declaration);
@@ -359,5 +350,73 @@ fn access_undeclared_field_from_trait() {
         .add_modules(&module_paths)
         .generate_scopes(&mut syntax_trees)
         .resolve_names(&syntax_trees)
+        .validate(&syntax_trees)
+        .build();
+}
+
+#[test]
+fn test_void() {
+    let void_expr = Expression::Void;
+    let env = Environment::default();
+    let actual = TypeChecker::with_environment(&env).test_resolve_expression(&void_expr);
+    assert_eq!(actual, Types::Void)
+}
+
+#[test]
+fn test_void_type_full() {
+    test_void_type_in_const(
+        r#"
+    const marker = ()
+    "#,
+    );
+}
+
+fn test_void_type_in_const(program: &str) {
+    let module_paths = vec![vec![]];
+    let mut syntax_trees = [abstract_tree(parse(tokenize(program)))];
+    let env = Environment::builder()
+        .add_modules(&module_paths)
+        .generate_scopes(&mut syntax_trees)
+        .resolve_names(&syntax_trees)
+        .build();
+
+    let target_constant = try_block!(
+        &ConstantDeclaration,
+        syntax_trees
+            .first()?
+            .compilation_unit
+            .declarations
+            .first()?
+            .as_constant()
+    );
+    let actual =
+        TypeChecker::with_environment(&env).test_resolve_expression(&target_constant.value);
+    let expected = Types::Void;
+    assert_eq!(actual, expected)
+}
+
+#[test]
+fn test_void_type_impl_trait() {
+    let mut syntax_trees = [
+        abstract_tree(parse(tokenize("trait Test(marker: Void)\n"))),
+        abstract_tree(parse(tokenize("struct Collection(test: Test)\n"))),
+        abstract_tree(parse(tokenize(
+            r#"struct Impl(data: String) { 
+            const marker = () 
+            }
+            "#,
+        ))),
+        abstract_tree(parse(tokenize(
+            r#"
+            const collection = Collection(Impl("test"))
+            "#,
+        ))),
+    ];
+    let module_paths = [vec![], vec![], vec![], vec![]];
+    let _env = Environment::builder()
+        .add_modules(&module_paths)
+        .generate_scopes(&mut syntax_trees)
+        .resolve_names(&syntax_trees)
+        .validate(&syntax_trees)
         .build();
 }

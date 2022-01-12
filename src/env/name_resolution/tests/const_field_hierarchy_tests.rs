@@ -183,5 +183,6 @@ fn test_constant_field_cycle_reference(program: &str, module_paths: Vec<Vec<&str
         .add_modules(&module_paths)
         .generate_scopes(&mut syntax_trees)
         .resolve_names(&syntax_trees)
+        .validate(&syntax_trees)
         .build();
 }

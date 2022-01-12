@@ -1,10 +1,10 @@
-use super::type_conform_checker::TypeConformChecker;
+use super::assignable_checker::AssignableChecker;
 use crate::ast::{Field, Parameter};
-use crate::env::name_resolution::types::Types;
+use crate::env::checks::type_checking::types::Types;
 use std::collections::{HashMap, VecDeque};
 
 pub struct StructInitChecker<'ast, 'a, 'env, 'checker>(
-    pub(in crate::env::name_resolution) TypeConformChecker<'ast, 'a, 'env, 'checker>,
+    pub(in crate::env) AssignableChecker<'ast, 'a, 'env, 'checker>,
 );
 
 #[cfg_attr(test, derive(Eq, PartialEq))]
@@ -66,7 +66,7 @@ impl<'ast, 'a, 'env, 'checker> StructInitChecker<'ast, 'a, 'env, 'checker> {
             .collect::<HashMap<_, _>>();
         for (field, field_type) in fields.iter().zip(&field_types) {
             if let Some(parameter_type) = parameter_types.get(field.name) {
-                if !self.0.conforms(parameter_type, field_type) {
+                if !self.0.check(parameter_type, field_type) {
                     return Err(Error::TypeMismatch {
                         field: field.name.to_owned(),
                         expected: format!("{:?}", field_type),
@@ -93,7 +93,7 @@ impl<'ast, 'a, 'env, 'checker> StructInitChecker<'ast, 'a, 'env, 'checker> {
                     Some(_) => Ok(()),
                     None => Err(Error::FieldNotSupplied(field.name.to_owned())),
                 };
-            } else if self.0.conforms(&parameter_types[0], expected_type) {
+            } else if self.0.check(&parameter_types[0], expected_type) {
                 parameter_types.pop_front();
             } else if field.default_value.is_none() {
                 return Err(Error::TypeMismatch {
@@ -115,9 +115,9 @@ impl<'ast, 'a, 'env, 'checker> StructInitChecker<'ast, 'a, 'env, 'checker> {
 mod struct_init_checker_tests {
     use super::{Error, StructInitChecker};
     use crate::ast::{Expression, Field, Name, Parameter, Type};
-    use crate::env::name_resolution::type_checking::type_conform_checker::TypeConformChecker;
-    use crate::env::name_resolution::type_checking::TypeChecker;
-    use crate::env::name_resolution::types::Types;
+    use crate::env::checks::type_checking::assignable_checker::AssignableChecker;
+    use crate::env::checks::type_checking::types::Types;
+    use crate::env::checks::type_checking::TypeChecker;
     use crate::env::Environment;
 
     fn field(name: &str, default_value: bool) -> Field {
@@ -227,7 +227,7 @@ mod struct_init_checker_tests {
     ) -> Result<(), Error> {
         let env = Environment::default();
         let mut type_checker = TypeChecker::with_environment(&env);
-        let type_conform_checker = TypeConformChecker(&mut type_checker);
+        let type_conform_checker = AssignableChecker(&mut type_checker);
         let mut struct_init_checker = StructInitChecker(type_conform_checker);
         struct_init_checker.check_plain_parameters(parameter_types, &fields, field_types)
     }
@@ -308,7 +308,7 @@ mod struct_init_checker_tests {
         let parameters = vec![parameter("field1"), parameter("field2")];
         let env = Environment::default();
         let mut type_checker = TypeChecker::with_environment(&env);
-        let type_conform_checker = TypeConformChecker(&mut type_checker);
+        let type_conform_checker = AssignableChecker(&mut type_checker);
         let check_res = StructInitChecker(type_conform_checker).check_parameters(
             &parameters,
             vec![Types::Int, Types::String],
@@ -330,7 +330,7 @@ mod struct_init_checker_tests {
         let parameters = vec![];
         let env = Environment::default();
         let mut type_checker = TypeChecker::with_environment(&env);
-        let type_conform_checker = TypeConformChecker(&mut type_checker);
+        let type_conform_checker = AssignableChecker(&mut type_checker);
         let check_res = StructInitChecker(type_conform_checker).check_parameters(
             &parameters,
             vec![],
@@ -355,7 +355,7 @@ mod struct_init_checker_tests {
     ) -> Result<(), Error> {
         let env = Environment::default();
         let mut type_checker = TypeChecker::with_environment(&env);
-        let type_conform_checker = TypeConformChecker(&mut type_checker);
+        let type_conform_checker = AssignableChecker(&mut type_checker);
         StructInitChecker(type_conform_checker).check_labelled_parameters(
             &parameters,
             &parameter_types,

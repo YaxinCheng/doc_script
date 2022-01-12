@@ -1,7 +1,9 @@
 use super::{Environment, ScopeId, GLOBAL_SCOPE};
 use std::collections::{HashMap, HashSet};
 
-pub(in crate::env) struct ModuleAdder<'ast, 'a, 'env>(pub &'env mut Environment<'ast, 'a>);
+pub(in crate::env::construction) struct ModuleAdder<'ast, 'a, 'env>(
+    pub &'env mut Environment<'ast, 'a>,
+);
 
 impl<'ast, 'a, 'env> ModuleAdder<'ast, 'a, 'env> {
     pub fn add_modules(mut self, module_paths: &[Vec<&'a str>]) {

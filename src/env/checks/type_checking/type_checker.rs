@@ -1,24 +1,24 @@
-use super::super::typed_element::TypedElement;
-use super::super::types::Types;
+use super::super::hash;
+use super::assignable_checker::AssignableChecker;
 use super::struct_init_checker::StructInitChecker;
-use super::type_conform_checker::TypeConformChecker;
 use super::type_resolver;
 use crate::ast::{
     AbstractSyntaxTree, Accessor, Block, ConstantDeclaration, Declaration, Expression, Field, Name,
     Parameter, Statement, StructDeclaration, StructInitContent, TraitDeclaration,
 };
-use crate::env::address_hash::hash;
+use crate::env::checks::type_checking::types::Types;
 use crate::env::environment::Resolved;
-use crate::env::name_resolution::resolve_helper::ResolveHelper;
+use crate::env::name_resolution::ResolveHelper;
 use crate::env::scope::ScopeId;
 use crate::env::Environment;
+use crate::env::TypedElement;
 use std::collections::{HashMap, HashSet};
 
 hash!(Field);
 hash!(Expression);
 
 pub(in crate::env) struct TypeChecker<'ast, 'a, 'env> {
-    pub(in crate::env::name_resolution::type_checking) environment: &'env Environment<'ast, 'a>,
+    pub(in crate::env) environment: &'env Environment<'ast, 'a>,
     resolved_expressions: HashMap<&'ast Expression<'a>, Types<'ast, 'a>>,
     resolved_fields: HashMap<&'ast Field<'a>, Types<'ast, 'a>>,
     resolved_instance_fields: HashMap<Name<'a>, Types<'ast, 'a>>,
@@ -55,7 +55,7 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
         }
     }
 
-    pub(in crate::env::name_resolution::type_checking) fn resolve_expression(
+    pub(in crate::env) fn resolve_expression(
         &mut self,
         expression: &'ast Expression<'a>,
     ) -> Types<'ast, 'a> {
@@ -63,6 +63,7 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
             return *resolved_type;
         }
         let resolve_type = match expression {
+            Expression::Void => Types::Void,
             Expression::ConstUse(name) => self.resolve_from_constant_use_name(name),
             Expression::SelfRef(scope_id) => {
                 self.resolve_self(scope_id.expect("self scope not set"))
@@ -123,7 +124,7 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
     }
 
     fn resolve_self(&self, scope: ScopeId) -> Types<'ast, 'a> {
-        match ResolveHelper(self.environment).resolve(scope, "$self") {
+        match ResolveHelper(self.environment).resolve(scope, "self") {
             Some(Resolved::Struct(struct_declaration)) => Types::Struct(struct_declaration),
             _ => panic!("self can only be used in structs"),
         }
@@ -173,7 +174,7 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
             .iter()
             .map(|parameter| self.resolve_expression(parameter.expression()))
             .collect::<Vec<_>>();
-        StructInitChecker(TypeConformChecker(self))
+        StructInitChecker(AssignableChecker(self))
             .check_parameters(parameters, parameter_types, fields, field_types)
             .expect("Failed struct field type check");
         init_content
@@ -205,9 +206,9 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
             let field_type = self.resolve_field(field);
             if let Some(value) = &accessor.value {
                 let argument_type = self.resolve_expression(value);
-                if !TypeConformChecker(self).conforms(&argument_type, &field_type) {
+                if !AssignableChecker(self).check(&argument_type, &field_type) {
                     panic!(
-                        "Expect type: `{:?}`\nFound type: `{:?}`, on access .{}",
+                        "Expect type: `{}`\nFound type: `{}`, on access .{}",
                         field_type, argument_type, accessor.identifier
                     );
                 }
@@ -254,10 +255,10 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
             .unwrap_or_else(|| panic!("Field type `{}` is invalid", field.field_type.0));
         if let Some(default_value) = &field.default_value {
             let value_type = self.resolve_expression(default_value);
-            if !TypeConformChecker(self).conforms(&value_type, &expected_type) {
+            if !AssignableChecker(self).check(&value_type, &expected_type) {
                 panic!(
-                    "Field default value has a different type.\nExpected: {:?}\nFound: {:?}\n",
-                    expected_type, value_type
+                    "Default value for field `{}` has a different type.\nExpected: {}\nFound: {}\n",
+                    field.name, expected_type, value_type
                 )
             }
         }

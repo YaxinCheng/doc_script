@@ -1,7 +1,7 @@
 use super::{debug_check, weeder, Expression, Field, Node, NodeKind};
 use crate::ast::check_unpack;
 use crate::ast::scoped_elements::StructBody;
-use crate::search::{BreadthFirst, DepthFirst};
+use crate::search::BreadthFirst;
 #[cfg(debug_assertions)]
 use crate::tokenizer::{Token, TokenKind};
 
@@ -89,31 +89,10 @@ impl<'a> StructDeclaration<'a> {
         debug_check! { _close_bracket, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: ")" })) }
         let fields = children
             .pop()
-            .map(Self::find_all_fields)
+            .map(Field::find_all_fields)
             .expect("Expect Fields");
         let _open_bracket = children.pop();
         debug_check! { _open_bracket, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "(" })) };
-        fields
-    }
-
-    fn find_all_fields(fields_node: Node<'a>) -> Vec<Field<'a>> {
-        let fields = DepthFirst::find(
-            fields_node,
-            |node| {
-                matches!(
-                    node.kind(),
-                    Some(NodeKind::PlainField | NodeKind::DefaultField)
-                )
-            },
-            |node| {
-                let mut children = node.children().unwrap_or_default();
-                children.reverse();
-                children
-            },
-        )
-        .map(Field::from)
-        .collect::<Vec<_>>();
-        weeder::fields::weed(&fields);
         fields
     }
 }
@@ -179,7 +158,7 @@ impl<'a> TraitDeclaration<'a> {
                 lexeme: "(",
             })) => vec![],
             Some(fields_node) => {
-                let fields = StructDeclaration::find_all_fields(fields_node);
+                let fields = Field::find_all_fields(fields_node);
                 let _open_bracket = children.pop();
                 debug_check! { _open_bracket, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "(" })) };
                 fields

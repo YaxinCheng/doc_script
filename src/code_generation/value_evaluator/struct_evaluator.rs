@@ -2,6 +2,7 @@ use super::expression_evaluator::ExpressionEvaluator;
 use super::value::Value;
 use crate::ast::{Expression, Field, StructBody, StructDeclaration};
 use std::collections::HashMap;
+use std::rc::Rc;
 
 #[cfg_attr(test, derive(Debug, PartialEq))]
 pub struct Struct<'ast, 'a> {
@@ -12,17 +13,20 @@ pub struct Struct<'ast, 'a> {
 pub struct StructEvaluator<'ast, 'a, 'env, 'res>(pub &'res mut ExpressionEvaluator<'ast, 'a, 'env>);
 
 impl<'ast, 'a, 'env, 'res> StructEvaluator<'ast, 'a, 'env, 'res> {
-    pub fn evaluate(mut self, struct_definition: &'ast StructDeclaration<'a>) -> Struct<'ast, 'a> {
+    pub fn evaluate(
+        mut self,
+        struct_definition: &'ast StructDeclaration<'a>,
+    ) -> Rc<Struct<'ast, 'a>> {
         let default_fields = self.resolve_default_fields(&struct_definition.fields);
         let attributes = struct_definition
             .body
             .as_ref()
             .map(Self::resolve_attributes)
             .unwrap_or_default();
-        Struct {
+        Rc::new(Struct {
             default_fields,
             attributes,
-        }
+        })
     }
 
     fn resolve_default_fields(

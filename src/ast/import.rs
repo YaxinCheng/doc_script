@@ -9,12 +9,12 @@ use enum_as_inner::EnumAsInner;
 
 #[cfg_attr(test, derive(Debug, Eq, PartialEq, EnumAsInner))]
 pub enum Import<'a> {
-    Single(Name<'a>),
+    Single(Vec<&'a str>),
     Multiple {
-        prefix: Name<'a>,
-        suffices: Vec<Name<'a>>,
+        prefix: Vec<&'a str>,
+        suffices: Vec<Vec<&'a str>>,
     },
-    Wildcard(Name<'a>),
+    Wildcard(Vec<&'a str>),
 }
 
 impl<'a> From<Node<'a>> for Import<'a> {
@@ -23,13 +23,13 @@ impl<'a> From<Node<'a>> for Import<'a> {
             Node::Internal {
                 kind: NodeKind::SingleImportDeclarationStatement,
                 mut children,
-            } => Import::Single(Name::from(
+            } => Import::Single(Name::find_raw_name_lexeme(
                 children.pop().expect("Import should have one child"),
             )),
             Node::Internal {
                 kind: NodeKind::WildcardImportDeclarationStatement,
                 mut children,
-            } => Import::Wildcard(Name::from(children.swap_remove(1))),
+            } => Import::Wildcard(Name::find_raw_name_lexeme(children.swap_remove(1))),
             Node::Internal {
                 kind: NodeKind::MultipleImportDeclarationStatement,
                 mut children,
@@ -41,13 +41,16 @@ impl<'a> From<Node<'a>> for Import<'a> {
                 debug_check! { _open_brackets, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "{" })) };
                 let _dot = children.pop();
                 debug_check! { _dot, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "." })) };
-                let prefix = children.pop().map(Name::from).expect("Expect Name");
+                let prefix = children
+                    .pop()
+                    .map(Name::find_raw_name_lexeme)
+                    .expect("Expect Name");
                 let suffices = BreadthFirst::find(
                     suffices,
                     |node| matches!(node.kind(), Some(NodeKind::Name)),
                     |node| node.children().unwrap_or_default(),
                 )
-                .map(Name::from)
+                .map(Name::find_raw_name_lexeme)
                 .collect();
                 Import::Multiple { prefix, suffices }
             }

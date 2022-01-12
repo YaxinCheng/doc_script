@@ -1,5 +1,6 @@
 use crate::ast::{ConstantDeclaration, Field, StructDeclaration, TraitDeclaration};
-use crate::env::name_resolution::typed_element::TypedElement;
+use crate::env::TypedElement;
+use std::fmt::{Display, Formatter};
 
 #[derive(Copy, Clone, Debug, Eq)]
 pub enum Types<'ast, 'a> {
@@ -59,6 +60,16 @@ impl<'ast, 'a> Types<'ast, 'a> {
             Self::Struct(struct_declaration) => &struct_declaration.fields,
             Self::Trait(trait_declaration) => &trait_declaration.required,
             _ => &[],
+        }
+    }
+}
+
+impl<'ast, 'a> Display for Types<'ast, 'a> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Trait(r#trait) => write!(f, "{}", r#trait.name),
+            Self::Struct(r#struct) => write!(f, "{}", r#struct.name),
+            other => write!(f, "{:?}", other),
         }
     }
 }

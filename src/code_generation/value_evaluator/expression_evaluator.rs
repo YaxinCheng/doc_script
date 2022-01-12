@@ -15,6 +15,19 @@ pub struct ExpressionEvaluator<'ast, 'a, 'env> {
     resolved_struct: HashMap<&'ast StructDeclaration<'a>, Rc<Struct<'ast, 'a>>>,
 }
 
+macro_rules! cached {
+    ($map: expr, $key: expr, $loader: expr) => {
+        match $map.get($key) {
+            Some(cached) => cached.clone(),
+            None => {
+                let loaded = $loader($key);
+                $map.insert($key, loaded.clone());
+                loaded
+            }
+        }
+    };
+}
+
 impl<'ast, 'a, 'env> ExpressionEvaluator<'ast, 'a, 'env> {
     pub fn with_environment(env: &'env Environment<'ast, 'a>) -> Self {
         Self {
@@ -29,6 +42,7 @@ impl<'ast, 'a, 'env> ExpressionEvaluator<'ast, 'a, 'env> {
         self_ref: Option<Value<'ast, 'a>>,
     ) -> Value<'ast, 'a> {
         match expression {
+            Expression::Void => Value::Void,
             Expression::ConstUse(name) => self.evaluate_name(name, self_ref),
             Expression::Literal { kind, lexeme } => literal_evaluator::evaluate(kind, lexeme),
             Expression::StructInit {
@@ -84,15 +98,9 @@ impl<'ast, 'a, 'env> ExpressionEvaluator<'ast, 'a, 'env> {
             Resolved::Struct(definition) => *definition,
             _ => unreachable!("name `{}` is not resolved to struct", name),
         };
-        let structure = match self.resolved_struct.get(struct_declaration) {
-            Some(structure) => Rc::clone(structure),
-            None => {
-                let structure = Rc::new(StructEvaluator(self).evaluate(struct_declaration));
-                self.resolved_struct
-                    .insert(struct_declaration, Rc::clone(&structure));
-                structure
-            }
-        };
+        let structure = cached!(self.resolved_struct, struct_declaration, |declaration| {
+            StructEvaluator(self).evaluate(declaration)
+        });
         let instance = InstanceEvaluator::new(self, self_ref).evaluate(
             structure,
             &struct_declaration.fields,

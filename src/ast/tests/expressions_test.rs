@@ -355,6 +355,13 @@ fn test_chaining_method_from_internal() {
     assert_eq!(expression, expected)
 }
 
+#[test]
+fn test_void_expression() {
+    let actual = find_first_expression("const a = ()\n").expect("Expect Expression");
+    let expected = Expression::Void;
+    assert_eq!(actual, expected)
+}
+
 fn find_first_expression(program: &str) -> Option<Expression> {
     let parse_tree = parse(tokenize(program));
     BreadthFirst::find(

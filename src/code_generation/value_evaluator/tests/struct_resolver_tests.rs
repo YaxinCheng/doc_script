@@ -7,6 +7,7 @@ use crate::parser::parse;
 use crate::tokenizer::tokenize;
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 #[test]
 fn test_resolve_empty_struct() {
@@ -82,7 +83,9 @@ fn get_struct(program: &str) -> Option<StructDeclaration> {
         .ok()
 }
 
-fn generate_struct<'ast, 'a>(struct_declaration: &'ast StructDeclaration<'a>) -> Struct<'ast, 'a> {
+fn generate_struct<'ast, 'a>(
+    struct_declaration: &'ast StructDeclaration<'a>,
+) -> Rc<Struct<'ast, 'a>> {
     let environment = Environment::default();
     let mut expression_resolver = ExpressionEvaluator::with_environment(&environment);
     let struct_resolver = StructEvaluator(&mut expression_resolver);

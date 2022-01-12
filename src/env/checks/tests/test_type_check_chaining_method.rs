@@ -1,7 +1,7 @@
+use super::try_block;
 use crate::ast::abstract_tree;
-use crate::env::name_resolution::tests::try_block;
-use crate::env::name_resolution::type_checking::TypeChecker;
-use crate::env::name_resolution::types::Types;
+use crate::env::checks::type_checking::types::Types;
+use crate::env::checks::type_checking::TypeChecker;
 use crate::env::Environment;
 use crate::parser::parse;
 use crate::tokenizer::tokenize;
@@ -95,10 +95,9 @@ fn test_chaining_method_invoke(program: &str) {
             .last()?
             .as_constant()
             .map(|constant| &constant.value)
-    )
-    .unwrap();
+    );
     let actual = TypeChecker::with_environment(&env).test_resolve_expression(target_expression);
-    let expected_type = try_block!(
+    let expected_type = Types::Struct(try_block!(
         &StructDeclaration,
         syntax_trees
             .first()?
@@ -106,8 +105,6 @@ fn test_chaining_method_invoke(program: &str) {
             .declarations
             .first()?
             .as_struct()
-    )
-    .map(Types::Struct)
-    .unwrap();
+    ));
     assert_eq!(actual, expected_type)
 }

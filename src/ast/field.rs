@@ -1,7 +1,8 @@
 use super::check_unpack;
 use super::Name;
 use super::{Node, NodeKind};
-use crate::ast::{debug_check, Expression};
+use crate::ast::{debug_check, weeder, Expression};
+use crate::search::DepthFirst;
 #[cfg(debug_assertions)]
 use crate::tokenizer::{Token, TokenKind};
 
@@ -46,6 +47,27 @@ impl<'a> Field<'a> {
             }
             _ => None,
         }
+    }
+
+    pub fn find_all_fields(fields_node: Node<'a>) -> Vec<Field<'a>> {
+        let fields = DepthFirst::find(
+            fields_node,
+            |node| {
+                matches!(
+                    node.kind(),
+                    Some(NodeKind::PlainField | NodeKind::DefaultField)
+                )
+            },
+            |node| {
+                let mut children = node.children().unwrap_or_default();
+                children.reverse();
+                children
+            },
+        )
+        .map(Field::from)
+        .collect::<Vec<_>>();
+        weeder::fields::weed(&fields);
+        fields
     }
 }
 

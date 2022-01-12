@@ -129,8 +129,8 @@ fn test_import_statement(text: &str) {
     .next()
     .expect("Failed to find import");
     let expected = Import::Multiple {
-        prefix: Name::qualified(vec!["test", "import"]),
-        suffices: vec![Name::simple("first"), Name::simple("second")],
+        prefix: vec!["test", "import"],
+        suffices: vec![vec!["first"], vec!["second"]],
     };
     assert_eq!(import, expected)
 }

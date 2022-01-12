@@ -6,7 +6,9 @@ use crate::env::declaration_resolution::UnresolvedNames;
 use crate::env::scope::*;
 use crate::env::Environment;
 
-pub(in crate::env) struct DeclarationAdder<'ast, 'a, 'env>(pub &'env mut Environment<'ast, 'a>);
+pub(in crate::env::declaration_resolution) struct DeclarationAdder<'ast, 'a, 'env>(
+    pub &'env mut Environment<'ast, 'a>,
+);
 
 impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
     /// Add all declarations to the environment and return unresolved names
@@ -76,7 +78,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
             Expression::ConstUse(constant_name) => {
                 seen_names.expression_names.insert(constant_name);
             }
-            Expression::Literal { .. } | Expression::SelfRef(_) => (),
+            Expression::Literal { .. } | Expression::SelfRef(_) | Expression::Void => (),
             Expression::StructInit {
                 name,
                 parameters,
@@ -179,7 +181,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
             body_scope
                 .name_spaces
                 .declared
-                .insert("$self", r#struct.into());
+                .insert("self", r#struct.into());
             for declaration in &body.attributes {
                 self.add_constant(declaration, body_scope_id, seen_names)
             }

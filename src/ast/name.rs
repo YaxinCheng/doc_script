@@ -34,10 +34,8 @@ impl<'a> Name<'a> {
             scope: None,
         }
     }
-}
 
-impl<'a> From<Node<'a>> for Name<'a> {
-    fn from(node: Node<'a>) -> Self {
+    pub fn find_raw_name_lexeme(node: Node<'a>) -> Vec<&'a str> {
         match node {
             Node::Internal {
                 kind: NodeKind::SimpleName,
@@ -48,7 +46,7 @@ impl<'a> From<Node<'a>> for Name<'a> {
                     .expect("Expect Leaf")
                     .token()
                     .expect("Expect Token");
-                Name::simple(leaf.lexeme)
+                vec![leaf.lexeme]
             }
             Node::Internal {
                 kind: NodeKind::QualifiedName,
@@ -68,16 +66,27 @@ impl<'a> From<Node<'a>> for Name<'a> {
                 })
                 .collect::<Vec<_>>();
                 names.reverse();
-                Name::qualified(names)
+                names
             }
             Node::Internal {
                 kind: NodeKind::Name,
                 mut children,
             } => children
                 .pop()
-                .map(Name::from)
+                .map(Name::find_raw_name_lexeme)
                 .expect("Name should have one child"),
             kind => unreachable!("Unexpected kind: {:?}", kind),
+        }
+    }
+}
+
+impl<'a> From<Node<'a>> for Name<'a> {
+    fn from(node: Node<'a>) -> Self {
+        let raw_names = Name::find_raw_name_lexeme(node);
+        debug_assert_ne!(raw_names.len(), 0, "Name is empty");
+        match raw_names.as_slice() {
+            [simple_name] => Name::simple(simple_name),
+            [..] => Name::qualified(raw_names),
         }
     }
 }

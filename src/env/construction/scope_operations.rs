@@ -6,7 +6,9 @@ use crate::ast::{
     StructDeclaration, TraitDeclaration,
 };
 
-pub(in crate::env) struct ScopeGenerator<'ast, 'a, 'env>(pub &'env mut Environment<'ast, 'a>);
+pub(in crate::env::construction) struct ScopeGenerator<'ast, 'a, 'env>(
+    pub &'env mut Environment<'ast, 'a>,
+);
 
 impl<'ast, 'a, 'env> ScopeGenerator<'ast, 'a, 'env> {
     pub fn generate(
@@ -54,7 +56,7 @@ impl<'ast, 'a, 'env> ScopeGenerator<'ast, 'a, 'env> {
             Expression::ConstUse(constant_name) => {
                 constant_name.set_scope(scope_id);
             }
-            Expression::Literal { .. } => (),
+            Expression::Literal { .. } | Expression::Void => (),
             Expression::SelfRef(self_scope) => *self_scope = Some(scope_id),
             Expression::StructInit {
                 name,

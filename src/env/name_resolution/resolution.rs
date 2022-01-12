@@ -29,6 +29,6 @@ impl<'ast, 'a, 'env> NameResolver<'ast, 'a, 'env> {
     }
 
     fn disambiguate_name(&mut self, name: &'ast Name<'a>) -> Resolved<'ast, 'a> {
-        ResolveHelper(self.0).disambiguate(name)
+        ResolveHelper(self.0).disambiguate(name.scope(), &name.moniker)
     }
 }

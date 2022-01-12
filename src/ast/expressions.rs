@@ -116,6 +116,8 @@ pub enum Expression<'a> {
     /// }
     /// ```
     SelfRef(Option<ScopeId>),
+    /// Void expression
+    Void,
 }
 
 impl<'a> From<Node<'a>> for Expression<'a> {
@@ -127,6 +129,7 @@ impl<'a> From<Node<'a>> for Expression<'a> {
             Some(NodeKind::ChainingMethodInvocation) => Self::chaining_method_invocation(node),
             Some(NodeKind::ConstantUse) => Self::const_use(node),
             Some(NodeKind::FieldAccess) => Self::field_access(node),
+            Some(NodeKind::VoidExpression) => Expression::Void,
             Some(NodeKind::Expression | NodeKind::ChainableExpression) => {
                 Self::expression_recursive(node)
             }
@@ -223,7 +226,7 @@ impl<'a> Expression<'a> {
                 let _self = children.pop();
                 debug_check! { _self, Some(Node::Leaf(Token { kind: TokenKind::Keyword, lexeme: "self" })) };
             }
-            let components = std::iter::once("$self")
+            let components = std::iter::once("self")
                 .chain(name.moniker.as_slice().iter().copied())
                 .collect::<Vec<_>>();
             Expression::ConstUse(Name::qualified(components))

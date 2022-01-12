@@ -1,5 +1,4 @@
 use super::super::DeclarationAdder;
-use super::construct_env;
 use crate::ast::{abstract_tree, AbstractSyntaxTree, Moniker};
 use crate::env::scope::GLOBAL_SCOPE;
 use crate::env::Environment;
@@ -12,7 +11,7 @@ fn prepare_module_path() -> Vec<Vec<&'static str>> {
 
 #[test]
 fn test_add_constant() {
-    let mut env = construct_env();
+    let mut env = Environment::default();
     let syntax_tree = abstract_tree(parse(tokenize("const a = b\n")));
     let unresolved_names = kick_off(&mut env, &syntax_tree);
     assert_eq!(unresolved_names, vec![&Moniker::Simple("b")]);

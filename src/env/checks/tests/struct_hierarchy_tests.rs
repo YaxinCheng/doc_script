@@ -61,7 +61,7 @@ fn test_hierarchy_check(program: &str) -> Result<(), Error> {
         get_declaration(syntax_trees.first()).expect("Failed to find declaration");
     let mut white_list = HashSet::new();
     let res = StructHierarchyChecker::with_environment(&env)
-        .recursively_check(target_declaration, &mut white_list);
+        .test_recursively_check(target_declaration, &mut white_list);
     if res.is_ok() {
         assert!(!white_list.is_empty());
     }
@@ -107,6 +107,6 @@ fn test_with_whitelist() {
     let mut white_list = HashSet::new();
     white_list.insert(declaration_of_a);
     let res = StructHierarchyChecker::with_environment(&env)
-        .recursively_check(target_declaration, &mut white_list);
+        .test_recursively_check(target_declaration, &mut white_list);
     assert!(res.is_ok())
 }

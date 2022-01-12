@@ -1,33 +1,41 @@
-use super::super::type_checking::TypeChecker;
-use super::super::types::Types;
-use crate::env::name_resolution::type_resolver;
+use super::type_resolver;
+use crate::env::checks::type_checking::types::Types;
+use crate::env::checks::type_checking::TypeChecker;
 use crate::env::TypedElement;
 
-pub(in crate::env::name_resolution) struct TypeConformChecker<'ast, 'a, 'env, 'checker>(
+/// This checker checks if source type can be assigned to target type
+///
+/// Mostly used in struct initialization when assigning values to a target field
+/// (fields have expected types clarified as a requirement)
+pub(in crate::env) struct AssignableChecker<'ast, 'a, 'env, 'checker>(
     pub &'checker mut TypeChecker<'ast, 'a, 'env>,
 );
 
-impl<'ast, 'a, 'env, 'checker> TypeConformChecker<'ast, 'a, 'env, 'checker> {
-    /// A conforms to B means A can be assigned to B
-    /// String conforms to Any
-    pub fn conforms(&mut self, source: &Types<'ast, 'a>, target: &Types<'ast, 'a>) -> bool {
-        if source == target {
-            true
-        } else {
-            match target {
+impl<'ast, 'a, 'env, 'checker> AssignableChecker<'ast, 'a, 'env, 'checker> {
+    /// This function checks if source type is assignable to target type.
+    /// In other words, if source type is assignable to target type,
+    /// then fields with target type can hold values with source type
+    pub fn check(&mut self, source: &Types<'ast, 'a>, target: &Types<'ast, 'a>) -> bool {
+        source == target
+            || match target {
                 r#trait @ Types::Trait(_) => self.conforms_to_trait(source, r#trait),
                 _ => false,
             }
-        }
     }
 
+    /// To make a type conforms to a trait,
+    /// the source type need to implement all the required fields
+    /// from the trait, with the same name and type
+    ///
+    /// # Note
+    /// Both struct and trait can conform to another trait
     fn conforms_to_trait(
         &mut self,
-        struct_type: &Types<'ast, 'a>,
+        source_type: &Types<'ast, 'a>,
         trait_type: &Types<'ast, 'a>,
     ) -> bool {
         for field in trait_type.fields() {
-            if let Some(typed_element) = struct_type.access(field.name) {
+            if let Some(typed_element) = source_type.access(field.name) {
                 let expected_type =
                     type_resolver::resolve_type_name(self.0.environment, &field.field_type.0)
                         .expect("Expected trait field type not found");
@@ -52,10 +60,10 @@ impl<'ast, 'a, 'env, 'checker> TypeConformChecker<'ast, 'a, 'env, 'checker> {
 
 #[cfg(test)]
 mod type_conform_checker_tests {
-    use super::super::super::type_checking::TypeChecker;
-    use super::TypeConformChecker;
+    use super::AssignableChecker;
     use crate::ast::{abstract_tree, AbstractSyntaxTree, Declaration};
-    use crate::env::name_resolution::types::Types;
+    use crate::env::checks::type_checking::types::Types;
+    use crate::env::checks::type_checking::TypeChecker;
     use crate::env::Environment;
     use crate::parser::parse;
     use crate::tokenizer::tokenize;
@@ -70,8 +78,8 @@ mod type_conform_checker_tests {
     fn test_type_equals() {
         let env = Environment::default();
         let mut type_checker = type_checker(&env);
-        let mut conform_checker = TypeConformChecker(&mut type_checker);
-        assert!(conform_checker.conforms(&Types::Int, &Types::Int))
+        let mut conform_checker = AssignableChecker(&mut type_checker);
+        assert!(conform_checker.check(&Types::Int, &Types::Int))
     }
 
     #[test]
@@ -150,10 +158,10 @@ mod type_conform_checker_tests {
             .resolve_names(&syntax_trees)
             .build();
         let mut type_checker = type_checker(&env);
-        let mut conform_checker = TypeConformChecker(&mut type_checker);
+        let mut conform_checker = AssignableChecker(&mut type_checker);
         let struct_type = Types::Struct(first_declaration(&syntax_trees[0]).as_struct().unwrap());
         let trait_type = Types::Trait(first_declaration(&syntax_trees[1]).as_trait().unwrap());
-        assert!(conform_checker.conforms(&struct_type, &trait_type))
+        assert!(conform_checker.check(&struct_type, &trait_type))
     }
 
     #[test]
@@ -171,10 +179,10 @@ mod type_conform_checker_tests {
             .resolve_names(&syntax_trees)
             .build();
         let mut type_checker = type_checker(&env);
-        let mut conform_checker = TypeConformChecker(&mut type_checker);
+        let mut conform_checker = AssignableChecker(&mut type_checker);
         let struct_type = Types::Trait(first_declaration(&syntax_trees[0]).as_trait().unwrap());
         let trait_type = Types::Trait(first_declaration(&syntax_trees[1]).as_trait().unwrap());
-        assert!(conform_checker.conforms(&struct_type, &trait_type))
+        assert!(conform_checker.check(&struct_type, &trait_type))
     }
 
     #[test]
@@ -187,7 +195,7 @@ mod type_conform_checker_tests {
             .resolve_names(&syntax_trees)
             .build();
         let mut type_checker = type_checker(&env);
-        let mut conform_checker = TypeConformChecker(&mut type_checker);
+        let mut conform_checker = AssignableChecker(&mut type_checker);
         let trait_type = Types::Trait(first_declaration(&syntax_trees[0]).as_trait().unwrap());
         for source_type in [
             Types::Int,
@@ -197,8 +205,31 @@ mod type_conform_checker_tests {
             Types::Bool,
             trait_type,
         ] {
-            assert!(conform_checker.conforms(&source_type, &trait_type))
+            assert!(conform_checker.check(&source_type, &trait_type))
         }
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_two_level_recursive_conform() {
+        let mut syntax_trees = [abstract_tree(parse(tokenize(
+            r#"
+                trait Id(number: Int)
+                trait People(name: String, id: Id)
+                struct IdImpl(number: Int = 42)
+                // manager does not conform to People, even though IdImpl conforms to Id
+                struct Manager(name: String, id: IdImpl) 
+                struct Company(owner: People)
+                const company = Company(owner: Manager("Name", IdImpl()))
+                "#,
+        )))];
+        let module_paths = [vec![]];
+        let _env = Environment::builder()
+            .add_modules(&module_paths)
+            .generate_scopes(&mut syntax_trees)
+            .resolve_names(&syntax_trees)
+            .validate(&syntax_trees)
+            .build();
     }
 
     fn first_declaration<'ast, 'a>(

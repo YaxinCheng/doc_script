@@ -1,6 +1,5 @@
 use super::super::Import;
 use super::*;
-use crate::ast::Name;
 
 #[test]
 fn test_simple_import() {
@@ -18,10 +17,7 @@ fn test_simple_import() {
     .next()
     .expect("Cannot find ImportDeclaration");
     let import = Import::from(node);
-    assert_eq!(
-        import,
-        Import::Single(Name::qualified(vec!["images", "mountains", "blue"]))
-    )
+    assert_eq!(import, Import::Single(vec!["images", "mountains", "blue"]))
 }
 
 #[test]
@@ -45,11 +41,11 @@ fn test_multiple_import() {
     assert_eq!(
         import,
         Import::Multiple {
-            prefix: Name::qualified(vec!["images", "canada"]),
+            prefix: vec!["images", "canada"],
             suffices: vec![
-                Name::qualified(vec!["mountains", "blue"]),
-                Name::qualified(vec!["lakes", "ontario"]),
-                Name::simple("parks")
+                vec!["mountains", "blue"],
+                vec!["lakes", "ontario"],
+                vec!["parks"]
             ]
         }
     )
@@ -71,10 +67,7 @@ fn test_imports_wildcard() {
     .next()
     .expect("Cannot find WildcardImportDeclarationStatement");
     let import = Import::from(node);
-    assert_eq!(
-        import,
-        Import::Wildcard(Name::qualified(vec!["images", "canada"]))
-    )
+    assert_eq!(import, Import::Wildcard(vec!["images", "canada"]))
 }
 
 #[test]

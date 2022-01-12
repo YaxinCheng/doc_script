@@ -1,7 +1,7 @@
 use super::super::scope_operations::ScopeGenerator;
-use super::construct_env;
 use crate::ast::{abstract_tree, AbstractSyntaxTree, ConstantDeclaration, StructDeclaration};
 use crate::env::scope::Scoped;
+use crate::env::Environment;
 use crate::parser::parse;
 use crate::tokenizer::tokenize;
 
@@ -11,7 +11,7 @@ fn prepare_module_paths() -> Vec<Vec<&'static str>> {
 
 #[test]
 fn test_scope_for_block() {
-    let mut env = construct_env();
+    let mut env = Environment::default();
     let mut ast = vec![abstract_tree(parse(tokenize("const a = { 3 }\n")))];
     let module_paths = prepare_module_paths();
     ScopeGenerator(&mut env).generate(&mut ast, &module_paths);
@@ -22,7 +22,7 @@ fn test_scope_for_block() {
 
 #[test]
 fn test_scope_for_struct_init_content() {
-    let mut env = construct_env();
+    let mut env = Environment::default();
     let mut ast = vec![abstract_tree(parse(tokenize(
         "const a = View { Text(\"\") }\n",
     )))];
@@ -36,7 +36,7 @@ fn test_scope_for_struct_init_content() {
 
 #[test]
 fn test_scope_for_struct_definition() {
-    let mut env = construct_env();
+    let mut env = Environment::default();
     let mut ast = vec![abstract_tree(parse(tokenize(
         "struct Test { const a = 3\n }\n",
     )))];

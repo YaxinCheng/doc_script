@@ -1,8 +1,10 @@
-use crate::ast::{AbstractSyntaxTree, Declaration, Import, Name};
+use crate::ast::{AbstractSyntaxTree, Declaration, Import};
 use crate::env::scope::{DeclaredElement, Scope, ScopeId};
 use crate::env::Environment;
 
-pub(in crate::env) struct Importer<'ast, 'a, 'env>(pub &'env mut Environment<'ast, 'a>);
+pub(in crate::env::declaration_resolution) struct Importer<'ast, 'a, 'env>(
+    pub &'env mut Environment<'ast, 'a>,
+);
 
 impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
     pub fn import_from(
@@ -46,7 +48,7 @@ impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
 
     fn process_import(&mut self, import: &'ast Import<'a>) -> Vec<Importing<'ast, 'a>> {
         match import {
-            Import::Single(name) => vec![self.process_single_import(name.moniker.as_slice())],
+            Import::Single(name) => vec![self.process_single_import(name)],
             Import::Wildcard(module) => vec![self.process_wildcard_import(module)],
             Import::Multiple { prefix, suffices } => suffices
                 .iter()
@@ -55,25 +57,20 @@ impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
         }
     }
 
-    fn process_wildcard_import(&mut self, module: &'ast Name<'a>) -> Importing<'ast, 'a> {
+    fn process_wildcard_import(&mut self, module: &'ast [&'a str]) -> Importing<'ast, 'a> {
         let source_scope_id = self
             .0
-            .find_module(module.moniker.as_slice())
-            .unwrap_or_else(|| panic!("Module name ({}) is invalid", module));
+            .find_module(module)
+            .unwrap_or_else(|| panic!("Module name ({}) is invalid", module.join(".")));
         Importing::Wildcard(source_scope_id, module)
     }
 
     fn process_multiple_import(
         &mut self,
-        prefix: &'ast Name<'a>,
-        suffix: &'ast Name<'a>,
+        prefix: &'ast [&'a str],
+        suffix: &'ast [&'a str],
     ) -> Importing<'ast, 'a> {
-        let prefix = prefix.moniker.as_slice();
-        let suffix = suffix.moniker.as_slice();
-        let mut combined = Vec::with_capacity(prefix.len() + suffix.len());
-        combined.extend_from_slice(prefix);
-        combined.extend_from_slice(suffix);
-        self.process_single_import(&combined)
+        self.process_single_import(&[prefix, suffix].concat())
     }
 
     fn process_single_import(&mut self, import: &[&'a str]) -> Importing<'ast, 'a> {
@@ -96,7 +93,7 @@ impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
 }
 
 enum Importing<'ast, 'a> {
-    Wildcard(ScopeId, &'ast Name<'a>),
+    Wildcard(ScopeId, &'ast [&'a str]),
     Module(ScopeId, &'a str),
     ExpressionOrStruct(DeclaredElement<'ast, 'a>, &'a str),
 }
@@ -115,11 +112,11 @@ impl<'ast, 'a> Importing<'ast, 'a> {
 
     fn import_wildcard(
         scope_id: ScopeId,
-        name: &'ast Name<'a>,
+        name: &'ast [&'a str],
         target_scope: &mut Scope<'ast, 'a>,
     ) {
         if !target_scope.name_spaces.wildcard_imports.insert(scope_id) {
-            panic!("Module `{}` has already being imported", name)
+            panic!("Module `{}` has already being imported", name.join("."))
         }
     }
 

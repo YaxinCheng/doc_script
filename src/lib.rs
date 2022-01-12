@@ -17,7 +17,7 @@ pub fn compile(source_file_names: Vec<String>) -> String {
         .map(ast::abstract_tree)
         .collect::<Vec<_>>();
     let environment = env::Environment::builder()
-        .add_modules_from_files(&source_file_names)
+        .add_modules_from_paths(&source_file_names)
         .generate_scopes(&mut compiled_syntax_trees)
         .resolve_names(&compiled_syntax_trees)
         .validate(&compiled_syntax_trees)

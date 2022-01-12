@@ -1,7 +1,7 @@
-use super::super::types::Types;
-use super::super::Environment;
-use super::super::Resolved;
 use crate::ast::Name;
+use crate::env::checks::type_checking::types::Types;
+use crate::env::Environment;
+use crate::env::Resolved;
 use crate::tokenizer::LiteralKind;
 
 pub(in crate::env) fn resolve_type_name<'ast, 'a>(
@@ -26,20 +26,20 @@ fn primitive_type<'ast, 'a>(name: &Name) -> Option<Types<'ast, 'a>> {
         Moniker::Simple("Float") => Some(Types::Float),
         Moniker::Simple("String") => Some(Types::String),
         Moniker::Simple("Bool") => Some(Types::Bool),
+        Moniker::Simple("Void") => Some(Types::Void),
         Moniker::Qualified(full_name) => match *full_name.as_ref() {
             ["std", "Int"] => Some(Types::Int),
             ["std", "Float"] => Some(Types::Int),
             ["std", "String"] => Some(Types::Int),
             ["std", "Bool"] => Some(Types::Int),
+            ["std", "Void"] => Some(Types::Void),
             _ => None,
         },
         _ => None,
     }
 }
 
-pub(in crate::env::name_resolution) fn resolve_literal<'ast, 'a>(
-    literal_kind: &LiteralKind,
-) -> Types<'ast, 'a> {
+pub(in crate::env) fn resolve_literal<'ast, 'a>(literal_kind: &LiteralKind) -> Types<'ast, 'a> {
     match literal_kind {
         LiteralKind::Binary | LiteralKind::Hex | LiteralKind::Integer => Types::Int,
         LiteralKind::Boolean => Types::Bool,

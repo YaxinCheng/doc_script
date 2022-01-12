@@ -1,21 +1,18 @@
-use super::super::ModuleAdder;
-use super::construct_env;
 use crate::env::scope::GLOBAL_SCOPE;
+use crate::env::Environment;
 
 #[test]
 fn test_simple_module() {
-    let mut env = construct_env();
-    let module_adder = ModuleAdder(&mut env);
-    module_adder.add_modules(&[vec!["test"]]);
+    let env = Environment::builder().add_modules(&[vec!["test"]]).build();
     let global_scope = env.get_scope(GLOBAL_SCOPE);
     assert!(global_scope.name_spaces.modules.contains_key("test"))
 }
 
 #[test]
 fn test_nested_module() {
-    let mut env = construct_env();
-    let module_adder = ModuleAdder(&mut env);
-    module_adder.add_modules(&[vec!["test", "doc"]]);
+    let env = Environment::builder()
+        .add_modules(&[vec!["test", "doc"]])
+        .build();
     let global_scope = env.get_scope(GLOBAL_SCOPE);
     assert!(global_scope.name_spaces.modules.contains_key("test"));
     let scope = env
@@ -30,18 +27,18 @@ fn test_nested_module() {
 
 #[test]
 fn test_duplicated_module() {
-    let mut env = construct_env();
-    let module_adder = ModuleAdder(&mut env);
-    module_adder.add_modules(&[vec!["test"], vec!["test"]]);
+    let env = Environment::builder()
+        .add_modules(&[vec!["test"], vec!["test"]])
+        .build();
     let global_scope = env.get_scope(GLOBAL_SCOPE);
     assert!(global_scope.name_spaces.modules.contains_key("test"))
 }
 
 #[test]
 fn test_nested_diverge_module() {
-    let mut env = construct_env();
-    let module_adder = ModuleAdder(&mut env);
-    module_adder.add_modules(&[vec!["test", "doc"], vec!["test", "image"]]);
+    let env = Environment::builder()
+        .add_modules(&[vec!["test", "doc"], vec!["test", "image"]])
+        .build();
     let global_scope = env.get_scope(GLOBAL_SCOPE);
     assert!(global_scope.name_spaces.modules.contains_key("test"));
     let scope = env

@@ -1,10 +1,10 @@
 mod struct_hierarchy;
 #[cfg(test)]
-mod struct_hierarchy_tests;
+mod tests;
+pub mod type_checking;
 
 use super::address_hash::hash;
-use super::name_resolution::type_resolver;
-use super::name_resolution::types::Types;
+use type_checking::types::Types;
 
 pub(in crate::env) use struct_hierarchy::StructHierarchyChecker;
 

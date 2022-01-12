@@ -7,15 +7,8 @@ mod import_operations;
 #[cfg(test)]
 mod tests;
 
-#[cfg(not(test))]
 use declaration_operations::DeclarationAdder;
-#[cfg(not(test))]
 use import_operations::Importer;
-
-#[cfg(test)]
-pub(in crate::env) use declaration_operations::DeclarationAdder;
-#[cfg(test)]
-pub(in crate::env) use import_operations::Importer;
 
 #[derive(Default)]
 pub(in crate::env) struct UnresolvedNames<'ast, 'a> {

@@ -1,16 +1,9 @@
 use super::super::resolve_helper::ResolveHelper;
 use crate::ast::abstract_tree;
-use crate::env::declaration_resolution::{DeclarationAdder, Importer};
+use crate::env::declaration_resolution;
 use crate::env::Environment;
 use crate::parser::parse;
 use crate::tokenizer::tokenize;
-
-macro_rules! prepare_env {
-    ($env: expr, $syntax_trees: expr, $module_paths: expr) => {
-        DeclarationAdder(&mut $env).add_from($syntax_trees, $module_paths);
-        Importer(&mut $env).import_from($syntax_trees, $module_paths);
-    };
-}
 
 #[test]
 fn test_resolve_constant_from_block() {
@@ -56,7 +49,7 @@ fn test_resolve_from_wildcard_import(programs: [&'static str; 2]) {
         .add_modules(&module_path)
         .generate_scopes(&mut syntax_trees)
         .build();
-    prepare_env!(env, &syntax_trees, &module_path);
+    declaration_resolution::resolve(&mut env, &syntax_trees, &module_path);
     let helper = ResolveHelper(&env);
     let source_scope_id = env.find_module(&module_path[1]).unwrap();
     let resolved = helper
@@ -91,7 +84,7 @@ fn test_unresolvable_name() {
         .add_modules(&module_path)
         .generate_scopes(&mut syntax_trees)
         .build();
-    prepare_env!(env, &syntax_trees, &module_path);
+    declaration_resolution::resolve(&mut env, &syntax_trees, &module_path);
     let helper = ResolveHelper(&env);
     let source_scope_id = env.find_module(&["test", "target"]).unwrap();
     let unresolved = helper.resolve(source_scope_id, "title");
@@ -114,7 +107,7 @@ fn test_shaded_name() {
         .add_modules(&module_path)
         .generate_scopes(&mut syntax_trees)
         .build();
-    prepare_env!(env, &syntax_trees, &module_path);
+    declaration_resolution::resolve(&mut env, &syntax_trees, &module_path);
     let helper = ResolveHelper(&env);
     let source_scope_id = env.find_module(&["test", "target"]).unwrap();
     let resolved = helper
@@ -131,4 +124,26 @@ fn test_shaded_name() {
         .as_constant()
         .unwrap();
     assert!(std::ptr::eq(actual, expected))
+}
+
+#[test]
+#[should_panic]
+fn test_ambiguous_wildcard_imports() {
+    let module_path = [vec!["first"], vec!["second"], vec!["target"]];
+    let mut syntax_trees = [
+        abstract_tree(parse(tokenize("const name = \"Test Name\"\n"))),
+        abstract_tree(parse(tokenize("const name = 3\n"))),
+        abstract_tree(parse(tokenize(
+            r#"
+        use first.*
+        use second.*
+        const target = name
+        "#,
+        ))),
+    ];
+    let _ = Environment::builder()
+        .add_modules(&module_path)
+        .generate_scopes(&mut syntax_trees)
+        .resolve_names(&syntax_trees)
+        .build();
 }

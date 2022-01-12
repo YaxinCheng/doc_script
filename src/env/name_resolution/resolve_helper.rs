@@ -1,11 +1,8 @@
 use super::super::scope::*;
 use super::{Environment, Resolved};
-use crate::ast::Name;
 use crate::search::Traversal;
 
-pub(in crate::env::name_resolution) struct ResolveHelper<'ast, 'a, 'env>(
-    pub &'env Environment<'ast, 'a>,
-);
+pub(in crate::env) struct ResolveHelper<'ast, 'a, 'env>(pub &'env Environment<'ast, 'a>);
 
 impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
     /// This function kicks off a search from given scope all the way to the global scope
@@ -44,13 +41,21 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
         scope: &Scope<'ast, 'a>,
         name: &str,
     ) -> Option<Resolved<'ast, 'a>> {
-        scope
+        let mut resolved = scope
             .name_spaces
             .wildcard_imports
             .iter()
             .copied()
             .map(|scope_id| self.0.get_scope(scope_id))
-            .find_map(|scope| self.try_resolve_name(scope, name))
+            .map(|scope| self.try_resolve_name(scope, name))
+            .take(2)
+            .collect::<Option<Vec<_>>>()?;
+        if resolved.len() > 1 {
+            panic!(
+                "Name `{name}` is ambiguous. There are more than one options in wildcard imports"
+            )
+        }
+        resolved.pop()
     }
 
     pub(in crate::env::name_resolution) fn resolve_mod(
@@ -67,20 +72,21 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
 
     /// This function resolves a qualified name.
     /// For example, names like: `self.field.attribute` or `constant.field` or `module1.module2.Struct`
-    pub(in crate::env::name_resolution) fn disambiguate(
+    pub(in crate::env::name_resolution) fn disambiguate<N: AsRef<[&'a str]>>(
         &self,
-        name: &Name<'a>,
+        scope: ScopeId,
+        moniker: N,
     ) -> Resolved<'ast, 'a> {
-        let (first_component, rest) = name.moniker.as_ref().split_first().expect("name is empty");
+        let (first_component, rest) = moniker.as_ref().split_first().expect("name is empty");
         let mut last_resolved = self
-            .resolve(name.scope(), first_component)
-            .unwrap_or_else(|| panic!("Name `{}` is unresolvable", first_component));
+            .resolve(scope, first_component)
+            .unwrap_or_else(|| panic!("Name `{first_component}` is unresolvable"));
         let mut access_iter = rest.iter().peekable();
         while let Some(component) = access_iter.peek() {
             last_resolved = match last_resolved {
                 Resolved::Module(module_scope) => self
                     .resolve_in_module(module_scope, component)
-                    .unwrap_or_else(|| panic!("`{}` cannot be found in module", component)),
+                    .unwrap_or_else(|| panic!("`{component}` cannot be found in module")),
                 Resolved::Constant(constant) => {
                     return Resolved::InstanceAccess(constant, access_iter.copied().collect())
                 }

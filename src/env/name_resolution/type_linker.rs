@@ -29,7 +29,9 @@ impl<'ast, 'a, 'env> TypeLinker<'ast, 'a, 'env> {
             Moniker::Simple(simple_name) => {
                 ResolveHelper(self.0).resolve(name.scope(), simple_name)
             }
-            Moniker::Qualified(_) => Some(ResolveHelper(self.0).disambiguate(name)),
+            Moniker::Qualified(_) => {
+                Some(ResolveHelper(self.0).disambiguate(name.scope(), &name.moniker))
+            }
         }
         .map(|resolved| match resolved {
             Resolved::Struct(_) | Resolved::Trait(_) => resolved,
@@ -42,16 +44,16 @@ impl<'ast, 'a, 'env> TypeLinker<'ast, 'a, 'env> {
     }
 
     fn link_type_in_module(&self, name: &'ast Name<'a>) -> Option<Resolved<'ast, 'a>> {
-        let resolved = ResolveHelper(self.0).disambiguate(name);
+        let resolved = ResolveHelper(self.0).disambiguate(name.scope(), &name.moniker);
         match resolved {
-            Resolved::Struct(_) => Some(resolved),
+            Resolved::Struct(_) | Resolved::Trait(_) => Some(resolved),
             _ => None,
         }
     }
 
     fn is_primitive_type(name: &'ast Name<'a>) -> bool {
         let is_primitive_name =
-            |name: &str| matches!(name, "Int" | "Float" | "String" | "Bool" | "()");
+            |name: &str| matches!(name, "Int" | "Float" | "String" | "Bool" | "Void");
         match &name.moniker {
             Moniker::Simple(name) => is_primitive_name(name),
             Moniker::Qualified(full_name) => {

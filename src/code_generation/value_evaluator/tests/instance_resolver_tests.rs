@@ -235,7 +235,7 @@ fn get_struct_declaration<'ast, 'a>(
 fn get_struct<'ast, 'a>(
     expr_resolver: &mut ExpressionEvaluator<'ast, 'a, '_>,
     declaration: &'ast StructDeclaration<'a>,
-) -> Struct<'ast, 'a> {
+) -> Rc<Struct<'ast, 'a>> {
     StructEvaluator(expr_resolver).evaluate(declaration)
 }
 
