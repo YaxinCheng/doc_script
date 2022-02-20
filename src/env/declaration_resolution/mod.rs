@@ -22,6 +22,8 @@ pub(in crate::env) fn resolve<'ast, 'a>(
     module_paths: &[Vec<&'a str>],
 ) -> UnresolvedNames<'ast, 'a> {
     let unresolved = DeclarationAdder(environment).add_from(syntax_trees, module_paths);
-    Importer(environment).import_from(syntax_trees, module_paths);
+    Importer(environment)
+        .insert_std_lib()
+        .import_from(syntax_trees, module_paths);
     unresolved
 }

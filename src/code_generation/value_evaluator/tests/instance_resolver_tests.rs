@@ -1,10 +1,10 @@
 use super::super::expression_evaluator::ExpressionEvaluator;
 use super::super::instance_evaluator::InstanceEvaluator;
-use super::super::struct_evaluator::{Struct, StructEvaluator};
+use super::super::struct_evaluator::StructEvaluator;
 use crate::ast::{
     abstract_tree, AbstractSyntaxTree, Expression, Parameter, StructDeclaration, StructInitContent,
 };
-use crate::code_generation::value_evaluator::instance_evaluator::Instance;
+use crate::code_generation::value::{Instance, Struct};
 use crate::code_generation::value_evaluator::value::Value;
 use crate::env::Environment;
 use crate::parser::parse;

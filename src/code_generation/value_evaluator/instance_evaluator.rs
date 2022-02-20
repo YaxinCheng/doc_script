@@ -1,45 +1,9 @@
 use super::expression_evaluator::ExpressionEvaluator;
-use super::struct_evaluator::Struct;
 use super::value::Value;
+use super::value::{Instance, Struct};
 use crate::ast::{Field, Parameter, StructInitContent};
 use std::collections::HashMap;
 use std::rc::Rc;
-
-#[cfg_attr(test, derive(Debug, PartialEq))]
-#[derive(Clone)]
-pub struct Instance<'ast, 'a> {
-    structure: Rc<Struct<'ast, 'a>>,
-    fields: HashMap<&'a str, Value<'ast, 'a>>,
-}
-
-impl<'ast, 'a> Instance<'ast, 'a> {
-    pub fn field(&self, name: &str) -> Option<Value<'ast, 'a>> {
-        self.fields
-            .get(name)
-            .or_else(|| self.structure.default_fields.get(name))
-            .cloned()
-    }
-
-    pub fn set_field(&mut self, name: &'a str, value: Value<'ast, 'a>) {
-        self.fields.insert(name, value);
-    }
-
-    pub fn reset_field(&mut self, name: &str) {
-        self.fields.remove(name);
-    }
-
-    pub fn attribute<'env>(
-        self: Rc<Self>,
-        expression_resolver: &mut ExpressionEvaluator<'ast, 'a, 'env>,
-        name: &str,
-    ) -> Option<Value<'ast, 'a>> {
-        self.structure
-            .attributes
-            .get(name)
-            .copied()
-            .map(|attr| expression_resolver.evaluate(attr, Some(Value::Instance(self))))
-    }
-}
 
 pub struct InstanceEvaluator<'ast, 'a, 'env, 'res> {
     expr_resolver: &'res mut ExpressionEvaluator<'ast, 'a, 'env>,

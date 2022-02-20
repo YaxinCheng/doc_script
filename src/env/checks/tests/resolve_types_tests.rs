@@ -262,40 +262,6 @@ fn test_type_access_internal(program: &str) {
 }
 
 #[test]
-fn test_self_type() {
-    let program = r#"
-    struct TestType {
-        const a = self
-    }
-    "#;
-    let module_paths = vec![vec![]];
-    let mut syntax_trees = [abstract_tree(parse(tokenize(program)))];
-    let env = Environment::builder()
-        .add_modules(&module_paths)
-        .generate_scopes(&mut syntax_trees)
-        .resolve_names(&syntax_trees)
-        .build();
-
-    let target_struct = try_block!(
-        &StructDeclaration,
-        syntax_trees
-            .first()?
-            .compilation_unit
-            .declarations
-            .first()?
-            .as_struct()
-    );
-    let target_constant = try_block!(
-        &ConstantDeclaration,
-        target_struct.body.as_ref()?.attributes.first()
-    );
-    let actual =
-        TypeChecker::with_environment(&env).test_resolve_expression(&target_constant.value);
-    let expected = Types::Struct(target_struct);
-    assert_eq!(actual, expected)
-}
-
-#[test]
 fn test_access_field_with_trait_type() {
     let program = r#"
     trait Trait(value: Int)

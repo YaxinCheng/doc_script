@@ -1,6 +1,7 @@
 use super::super::expression_evaluator::ExpressionEvaluator;
 use super::super::value::Value;
-use crate::ast::{abstract_tree, AbstractSyntaxTree, ConstantDeclaration};
+use super::get_constant;
+use crate::ast::abstract_tree;
 use crate::env::Environment;
 use crate::parser::parse;
 use crate::tokenizer::tokenize;
@@ -115,14 +116,4 @@ fn test_expression(program: &str, expected: Value) {
     let constant = get_constant(&syntax_trees[0]).expect("Constant not found");
     let actual = ExpressionEvaluator::with_environment(&env).evaluate(&constant.value, None);
     assert_eq!(actual, expected)
-}
-
-fn get_constant<'ast, 'a>(
-    syntax_tree: &'ast AbstractSyntaxTree<'a>,
-) -> Option<&'ast ConstantDeclaration<'a>> {
-    syntax_tree
-        .compilation_unit
-        .declarations
-        .last()?
-        .as_constant()
 }

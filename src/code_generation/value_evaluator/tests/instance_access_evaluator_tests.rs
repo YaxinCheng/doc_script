@@ -1,6 +1,7 @@
 use super::super::expression_evaluator::ExpressionEvaluator;
 use super::super::instance_access_evaluator::InstanceAccessEvaluator;
-use crate::ast::{abstract_tree, AbstractSyntaxTree, ConstantDeclaration};
+use super::get_constant;
+use crate::ast::abstract_tree;
 use crate::code_generation::value_evaluator::value::Value;
 use crate::env::Environment;
 use crate::parser::parse;
@@ -71,14 +72,4 @@ fn test_evaluated_value(program: &str, accesses: &[&str], expected: Value) {
     let receiver = get_constant(&syntax_trees[0]).expect("Constant not found");
     let actual = instance_access_evaluator.evaluate(receiver, accesses);
     assert_eq!(actual, expected)
-}
-
-fn get_constant<'ast, 'a>(
-    syntax_tree: &'ast AbstractSyntaxTree<'a>,
-) -> Option<&'ast ConstantDeclaration<'a>> {
-    syntax_tree
-        .compilation_unit
-        .declarations
-        .last()?
-        .as_constant()
 }

@@ -1,4 +1,5 @@
 use super::type_resolver;
+use crate::env::checks::type_checking::render_impl_checker::RenderImplChecker;
 use crate::env::checks::type_checking::types::Types;
 use crate::env::checks::type_checking::TypeChecker;
 use crate::env::TypedElement;
@@ -21,6 +22,7 @@ impl<'ast, 'a, 'env, 'checker> AssignableChecker<'ast, 'a, 'env, 'checker> {
                 r#trait @ Types::Trait(_) => self.conforms_to_trait(source, r#trait),
                 _ => false,
             }
+            || RenderImplChecker(self.0.environment).check(source, target)
     }
 
     /// To make a type conforms to a trait,
@@ -47,7 +49,7 @@ impl<'ast, 'a, 'env, 'checker> AssignableChecker<'ast, 'a, 'env, 'checker> {
                     .expect("Failed to find type for field"),
                     TypedElement::Constant(constant) => self.0.resolve_expression(&constant.value),
                 };
-                if found_type != expected_type {
+                if !self.check(&found_type, &expected_type) {
                     return false;
                 }
             } else {
@@ -211,6 +213,25 @@ mod type_conform_checker_tests {
 
     #[test]
     #[should_panic]
+    fn self_recursive_conform_traits() {
+        let mut syntax_trees = [
+            abstract_tree(parse(tokenize("trait Render(rendered: Render)\n"))),
+            abstract_tree(parse(tokenize("struct View {\nconst rendered = self\n}\n"))),
+        ];
+        let module_paths = [vec![], vec![]];
+        let env = Environment::builder()
+            .add_modules(&module_paths)
+            .generate_scopes(&mut syntax_trees)
+            .resolve_names(&syntax_trees)
+            .build();
+        let mut type_checker = type_checker(&env);
+        let mut conform_checker = AssignableChecker(&mut type_checker);
+        let trait_type = Types::Trait(first_declaration(&syntax_trees[0]).as_trait().unwrap());
+        let struct_type = Types::Struct(first_declaration(&syntax_trees[1]).as_struct().unwrap());
+        assert!(!conform_checker.check(&struct_type, &trait_type))
+    }
+
+    #[test]
     fn test_two_level_recursive_conform() {
         let mut syntax_trees = [abstract_tree(parse(tokenize(
             r#"

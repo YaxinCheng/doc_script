@@ -47,9 +47,9 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
             .iter()
             .copied()
             .map(|scope_id| self.0.get_scope(scope_id))
-            .map(|scope| self.try_resolve_name(scope, name))
+            .filter_map(|scope| self.try_resolve_name(scope, name))
             .take(2)
-            .collect::<Option<Vec<_>>>()?;
+            .collect::<Vec<_>>();
         if resolved.len() > 1 {
             panic!(
                 "Name `{name}` is ambiguous. There are more than one options in wildcard imports"

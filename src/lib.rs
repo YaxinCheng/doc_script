@@ -1,3 +1,5 @@
+extern crate core;
+
 use std::path::Path;
 
 mod ast;
@@ -5,19 +7,24 @@ mod code_generation;
 mod env;
 mod parser;
 mod search;
+mod stdlib;
 mod tokenizer;
 
 pub fn compile(source_file_names: Vec<String>) -> String {
     let file_content = source_file_names.iter().map(read_file).collect::<Vec<_>>();
-    let mut compiled_syntax_trees = file_content
-        .iter()
-        .map(|content| content.as_ref())
+    let mut compiled_syntax_trees = stdlib::content()
+        .into_iter()
+        .chain(file_content.iter().map(|content| content.as_ref()))
         .map(tokenizer::tokenize)
         .map(parser::parse)
         .map(ast::abstract_tree)
         .collect::<Vec<_>>();
     let environment = env::Environment::builder()
-        .add_modules_from_paths(&source_file_names)
+        .add_modules_from_paths(
+            stdlib::paths()
+                .into_iter()
+                .chain(source_file_names.iter().map(String::as_str)),
+        )
         .generate_scopes(&mut compiled_syntax_trees)
         .resolve_names(&compiled_syntax_trees)
         .validate(&compiled_syntax_trees)

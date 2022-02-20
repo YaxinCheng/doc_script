@@ -6,7 +6,7 @@ pub fn identifier(cursor: &mut Cursor) -> usize {
 }
 
 pub fn is_identifier_start(c: char) -> bool {
-    c.is_alphabetic()
+    c.is_alphabetic() || c == '_'
 }
 
 pub fn is_identifier_continue(c: char) -> bool {

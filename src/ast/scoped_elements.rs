@@ -1,3 +1,4 @@
+use crate::ast::weeder::attributes;
 use crate::ast::{ConstantDeclaration, Expression, Statement};
 use crate::env::scope::*;
 use scope_macro::Scoped;
@@ -54,7 +55,7 @@ pub struct StructBody<'a> {
 
 impl<'a> FromIterator<ConstantDeclaration<'a>> for StructBody<'a> {
     fn from_iter<T: IntoIterator<Item = ConstantDeclaration<'a>>>(iter: T) -> Self {
-        let declarations = iter.into_iter().collect();
+        let declarations = iter.into_iter().inspect(attributes::weed).collect();
         Self {
             attributes: declarations,
             scope: None,

@@ -1,5 +1,6 @@
 use super::super::hash;
 use super::assignable_checker::AssignableChecker;
+use super::essential_trait;
 use super::struct_init_checker::StructInitChecker;
 use super::type_resolver;
 use crate::ast::{
@@ -184,9 +185,16 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
     }
 
     fn resolve_init_content(&mut self, init_content: &'ast StructInitContent<'a>) {
+        let render_trait =
+            essential_trait::render(self.environment).expect("Render trait not found");
+        let render_type = Types::Trait(render_trait);
         for expression in &init_content.0 {
-            self.resolve_expression(expression);
-            // TODO: check if type is compatible
+            let expr_type = self.resolve_expression(expression);
+            assert!(
+                AssignableChecker(self).check(&expr_type, &render_type),
+                "Types in init content must implement Render trait. Found: {}",
+                expr_type
+            )
         }
     }
 

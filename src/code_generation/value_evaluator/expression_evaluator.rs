@@ -1,17 +1,18 @@
 use super::instance_access_evaluator::InstanceAccessEvaluator;
 use super::instance_evaluator::InstanceEvaluator;
 use super::literal_evaluator;
-use super::struct_evaluator::{Struct, StructEvaluator};
+use super::struct_evaluator::StructEvaluator;
 use super::value::Value;
 use crate::ast::{
     Accessor, Block, Expression, Name, Parameter, Statement, StructDeclaration, StructInitContent,
 };
+use crate::code_generation::value::Struct;
 use crate::env::{Environment, Resolved};
 use std::collections::HashMap;
 use std::rc::Rc;
 
 pub struct ExpressionEvaluator<'ast, 'a, 'env> {
-    env: &'env Environment<'ast, 'a>,
+    pub env: &'env Environment<'ast, 'a>,
     resolved_struct: HashMap<&'ast StructDeclaration<'a>, Rc<Struct<'ast, 'a>>>,
 }
 

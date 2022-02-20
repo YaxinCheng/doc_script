@@ -6,6 +6,7 @@ use std::io::{BufRead, BufReader, BufWriter, Error, ErrorKind, Read, Result, Wri
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str::FromStr;
+use walkdir::WalkDir;
 
 const LR1_OUTPUT: &str = "grammar.lr1";
 const NODE_KIND_FILE_NAME: &str = "node_kind.rs";
@@ -32,6 +33,10 @@ const GRAMMAR_FILES: &[&str] = &[
     concat!(env!("CARGO_MANIFEST_DIR"), "/grammar/rules.cfg"),
 ]; // the order should be preserved to generate correct grammar file
 
+const STDLIB_FILE_NAME: &str = "stdlib.rs";
+const STDLIB_PATH_NAME: &str = "stdlib_path.rs";
+const STDLIB_COUNT_NAME: &str = "stdlib_count.rs";
+
 fn main() -> Result<()> {
     let output_dir: PathBuf = std::env::var("OUT_DIR")
         .map(PathBuf::from)
@@ -39,9 +44,14 @@ fn main() -> Result<()> {
     compile_converter()?;
     generate_lr1_table(&output_dir)?;
     process_lr1_grammar(&output_dir)?;
+    generate_stdlib_files(&output_dir)?;
     for path in GRAMMAR_FILES {
         println!("cargo:rerun-if-changed={}", path);
     }
+    println!(
+        "cargo:rerun-if-changed={}",
+        concat!(env!("CARGO_MANIFEST_DIR"), "/std")
+    );
     Ok(())
 }
 
@@ -381,4 +391,31 @@ fn should_ignore_lexeme(symbol: &str) -> bool {
             | "ParsingStart"
             | "ParsingEnd"
     )
+}
+
+fn generate_stdlib_files(output_dir: &Path) -> Result<()> {
+    let mut std_file_writer = BufWriter::new(File::create(output_dir.join(STDLIB_FILE_NAME))?);
+    let mut std_path_writer = BufWriter::new(File::create(output_dir.join(STDLIB_PATH_NAME))?);
+    std_file_writer.write_all(b"[\n")?;
+    std_path_writer.write_all(b"[\n")?;
+    let mut counter = 0_usize;
+    for entry in WalkDir::new("std").follow_links(false).into_iter() {
+        let entry = entry?;
+        if entry
+            .file_name()
+            .to_str()
+            .map(|file_name| file_name.starts_with('.') || !file_name.ends_with(".ds"))
+            .unwrap_or_default()
+        {
+            continue;
+        }
+        let path = entry.path().display();
+        counter += 1;
+        writeln!(std_file_writer, r#"include_str!("{PROJECT_PATH}/{path}"),"#)?;
+        writeln!(std_path_writer, r#""{path}","#)?;
+    }
+    std_file_writer.write_all(b"]\n")?;
+    std_path_writer.write_all(b"]\n")?;
+    let mut std_count_writer = BufWriter::new(File::create(output_dir.join(STDLIB_COUNT_NAME))?);
+    writeln!(std_count_writer, "{counter}")
 }

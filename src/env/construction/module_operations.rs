@@ -1,6 +1,7 @@
 use super::{Environment, ScopeId, GLOBAL_SCOPE};
 use std::collections::{HashMap, HashSet};
 
+/// Insert module information into the environment
 pub(in crate::env::construction) struct ModuleAdder<'ast, 'a, 'env>(
     pub &'env mut Environment<'ast, 'a>,
 );

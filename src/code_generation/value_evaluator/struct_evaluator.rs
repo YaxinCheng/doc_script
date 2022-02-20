@@ -1,14 +1,10 @@
 use super::expression_evaluator::ExpressionEvaluator;
-use super::value::Value;
+use super::value::{Struct, Value};
 use crate::ast::{Expression, Field, StructBody, StructDeclaration};
+use crate::code_generation::value::PackageState;
+use crate::env::ModuleVerifier;
 use std::collections::HashMap;
 use std::rc::Rc;
-
-#[cfg_attr(test, derive(Debug, PartialEq))]
-pub struct Struct<'ast, 'a> {
-    pub default_fields: HashMap<&'a str, Value<'ast, 'a>>,
-    pub attributes: HashMap<&'a str, &'ast Expression<'a>>,
-}
 
 pub struct StructEvaluator<'ast, 'a, 'env, 'res>(pub &'res mut ExpressionEvaluator<'ast, 'a, 'env>);
 
@@ -23,9 +19,16 @@ impl<'ast, 'a, 'env, 'res> StructEvaluator<'ast, 'a, 'env, 'res> {
             .as_ref()
             .map(Self::resolve_attributes)
             .unwrap_or_default();
+        let module_verifier = ModuleVerifier::with_environment(self.0.env);
+        let package_state = module_verifier
+            .in_render(struct_definition)
+            .then(|| PackageState::Render)
+            .unwrap_or(PackageState::Normal);
         Rc::new(Struct {
+            name: struct_definition.name,
             default_fields,
             attributes,
+            package_state,
         })
     }
 

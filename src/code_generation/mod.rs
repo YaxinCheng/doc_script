@@ -2,11 +2,14 @@ use crate::ast::ConstantDeclaration;
 use crate::env::scope::{DeclaredElement, GLOBAL_SCOPE};
 use crate::env::Environment;
 
+mod value;
 mod value_evaluator;
+mod value_writer;
 
 pub fn generate_code(environment: &Environment) -> String {
     let entry = find_entry(environment);
-    let _evaluated_value = value_evaluator::evaluate(environment, entry);
+    let mut evaluator = value_evaluator::ExpressionEvaluator::with_environment(environment);
+    let _evaluated_value = value_evaluator::evaluate(&mut evaluator, entry);
     todo!("Serialize the resolved value to string")
 }
 

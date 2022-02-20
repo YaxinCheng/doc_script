@@ -1,12 +1,29 @@
+use super::super::scope::{DeclaredElement, Scope, ScopeId};
+use super::Environment;
 use crate::ast::{AbstractSyntaxTree, Declaration, Import};
-use crate::env::scope::{DeclaredElement, Scope, ScopeId};
-use crate::env::Environment;
 
 pub(in crate::env::declaration_resolution) struct Importer<'ast, 'a, 'env>(
     pub &'env mut Environment<'ast, 'a>,
 );
 
 impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
+    pub fn insert_std_lib(&mut self) -> &mut Self {
+        #[cfg(not(test))]
+        {
+            use super::super::scope::GLOBAL_SCOPE;
+            let std = [
+                self.process_wildcard_import(&["std"]),
+                self.process_wildcard_import(&["std", "essential"]),
+                self.process_wildcard_import(&["std", "essential", "Render"]),
+            ];
+            let global_scope = self.0.get_scope_mut(GLOBAL_SCOPE);
+            for stdlib in std {
+                stdlib.import_to(global_scope);
+            }
+        }
+        self
+    }
+
     pub fn import_from(
         &mut self,
         syntax_trees: &'ast [AbstractSyntaxTree<'a>],
@@ -46,7 +63,7 @@ impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
             })
     }
 
-    fn process_import(&mut self, import: &'ast Import<'a>) -> Vec<Importing<'ast, 'a>> {
+    fn process_import(&self, import: &'ast Import<'a>) -> Vec<Importing<'ast, 'a>> {
         match import {
             Import::Single(name) => vec![self.process_single_import(name)],
             Import::Wildcard(module) => vec![self.process_wildcard_import(module)],
@@ -57,7 +74,7 @@ impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
         }
     }
 
-    fn process_wildcard_import(&mut self, module: &'ast [&'a str]) -> Importing<'ast, 'a> {
+    fn process_wildcard_import(&self, module: &'ast [&'a str]) -> Importing<'ast, 'a> {
         let source_scope_id = self
             .0
             .find_module(module)
@@ -66,14 +83,14 @@ impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
     }
 
     fn process_multiple_import(
-        &mut self,
+        &self,
         prefix: &'ast [&'a str],
         suffix: &'ast [&'a str],
     ) -> Importing<'ast, 'a> {
         self.process_single_import(&[prefix, suffix].concat())
     }
 
-    fn process_single_import(&mut self, import: &[&'a str]) -> Importing<'ast, 'a> {
+    fn process_single_import(&self, import: &[&'a str]) -> Importing<'ast, 'a> {
         debug_assert!(!import.is_empty(), "Cannot import empty module");
         let (last_element, module_path) =
             import.split_last().unwrap_or((import.last().unwrap(), &[]));

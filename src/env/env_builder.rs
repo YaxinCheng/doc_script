@@ -36,12 +36,9 @@ impl<'ast, 'a> EnvironmentBuilder<'ast, 'a, CONSTRUCTED> {
     /// modules `models` and `models.tree`
     pub fn add_modules_from_paths(
         mut self,
-        paths: &'a [String],
+        paths: impl Iterator<Item = &'a str>,
     ) -> EnvironmentBuilder<'ast, 'a, MODULE_ADDED> {
-        let module_paths = paths
-            .iter()
-            .map(String::as_str)
-            .map(Self::convert_to_module);
+        let module_paths = paths.map(Self::convert_to_module);
         self.module_paths.extend(module_paths);
         construction::add_modules(&mut self.environment, &self.module_paths);
         EnvironmentBuilder {
@@ -98,6 +95,25 @@ impl<'ast, 'a> EnvironmentBuilder<'ast, 'a, MODULE_ADDED> {
 }
 
 impl<'ast, 'a> EnvironmentBuilder<'ast, 'a, SCOPE_GENERATED> {
+    #[cfg(test)]
+    pub fn prelude_std(mut self) -> Self {
+        let prelude_modules = [
+            &["std"] as &[_],
+            &["std", "essential"],
+            &["std", "essential", "Render"],
+        ]
+        .map(|module_name| {
+            self.environment
+                .find_module(module_name)
+                .unwrap_or_else(|| panic!("Cannot find module `{}`", module_name.join(".")))
+        });
+        let global_scope = self.environment.get_scope_mut(0);
+        global_scope
+            .name_spaces
+            .wildcard_imports
+            .extend(prelude_modules);
+        self
+    }
     ///
     pub fn resolve_names(
         mut self,

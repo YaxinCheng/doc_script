@@ -62,14 +62,22 @@ impl<'ast, 'a> Types<'ast, 'a> {
             _ => &[],
         }
     }
+
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Trait(r#trait) => r#trait.name,
+            Self::Struct(r#struct) => r#struct.name,
+            Self::Int => "Int",
+            Self::String => "String",
+            Self::Void => "Void",
+            Self::Float => "Float",
+            Self::Bool => "Bool",
+        }
+    }
 }
 
 impl<'ast, 'a> Display for Types<'ast, 'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Trait(r#trait) => write!(f, "{}", r#trait.name),
-            Self::Struct(r#struct) => write!(f, "{}", r#struct.name),
-            other => write!(f, "{:?}", other),
-        }
+        write!(f, "{}", self.name())
     }
 }

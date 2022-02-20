@@ -1,6 +1,7 @@
 use super::super::expression_evaluator::ExpressionEvaluator;
 use crate::ast::{abstract_tree, StructDeclaration};
-use crate::code_generation::value_evaluator::struct_evaluator::{Struct, StructEvaluator};
+use crate::code_generation::value::Struct;
+use crate::code_generation::value_evaluator::struct_evaluator::StructEvaluator;
 use crate::code_generation::value_evaluator::value::Value;
 use crate::env::Environment;
 use crate::parser::parse;
