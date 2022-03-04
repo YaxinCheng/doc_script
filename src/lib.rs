@@ -10,7 +10,7 @@ mod search;
 mod stdlib;
 mod tokenizer;
 
-pub fn compile(source_file_names: Vec<String>) -> String {
+pub fn compile(source_file_names: Vec<String>) {
     let file_content = source_file_names.iter().map(read_file).collect::<Vec<_>>();
     let mut compiled_syntax_trees = stdlib::content()
         .into_iter()
@@ -29,7 +29,7 @@ pub fn compile(source_file_names: Vec<String>) -> String {
         .resolve_names(&compiled_syntax_trees)
         .validate(&compiled_syntax_trees)
         .build();
-    code_generation::generate_code(&environment)
+    code_generation::generate_code(&environment, "a.doc")
 }
 
 fn read_file<P: AsRef<Path>>(path: P) -> impl AsRef<str> {

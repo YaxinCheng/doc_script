@@ -66,8 +66,6 @@ fn eat_shift_operator(leading: char, cursor: &mut Cursor) -> usize {
 
 #[cfg(test)]
 mod operator_tests {
-    use std::array::IntoIter;
-
     use quickcheck::{quickcheck, TestResult};
 
     use super::{is_operator_start, operator, Cursor};
@@ -83,7 +81,7 @@ mod operator_tests {
         let targets = [
             '=', '>', '<', '!', '~', '+', '-', '*', '/', '&', '|', '^', '%',
         ];
-        assert!(IntoIter::new(targets).all(is_operator_start))
+        assert!(targets.into_iter().all(is_operator_start))
     }
 
     #[test]
@@ -103,7 +101,7 @@ mod operator_tests {
     fn quickcheck_is_operator_start(s: String) -> TestResult {
         if s.is_empty() {
             TestResult::discard()
-        } else if IntoIter::new(ALL_OPERATORS).any(|i| s.starts_with(i)) {
+        } else if ALL_OPERATORS.into_iter().any(|i| s.starts_with(i)) {
             TestResult::from_bool(is_operator_start(
                 s.chars().next().expect("Checked by is_empty()"),
             ))

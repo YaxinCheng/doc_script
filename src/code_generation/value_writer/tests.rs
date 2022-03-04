@@ -1,6 +1,5 @@
 use super::super::value::{Instance, PackageState, Struct, Value};
 use super::super::value_evaluator::ExpressionEvaluator;
-use super::write_to_string;
 use super::RENDER_TAG;
 use crate::env::Environment;
 use std::collections::HashMap;
@@ -10,6 +9,15 @@ fn evaluator<'ast, 'a, 'env>(
     env: &'env Environment<'ast, 'a>,
 ) -> ExpressionEvaluator<'ast, 'a, 'env> {
     ExpressionEvaluator::with_environment(env)
+}
+
+fn write_to_string<'ast, 'a, 'env>(
+    evaluator: ExpressionEvaluator<'ast, 'a, 'env>,
+    value: Value<'ast, 'a>,
+) -> String {
+    let mut output = vec![];
+    super::write(evaluator, value, &mut output);
+    String::from_utf8(output).expect("Utf8 string")
 }
 
 #[test]
@@ -43,6 +51,38 @@ fn test_primitive_arrays() {
     let expected = r#"[42,10.48,true,"Hello World",]"#;
     let env = Environment::default();
     assert_eq!(write_to_string(evaluator(&env), primitive_array), expected)
+}
+
+#[test]
+fn test_empty_arrays() {
+    let array = Value::Array(vec![Value::Void, Value::Void]);
+    let expected = "";
+    let env = Environment::default();
+    assert_eq!(write_to_string(evaluator(&env), array), expected)
+}
+
+#[test]
+fn test_empty_array_nested() {
+    let structure = Struct {
+        package_state: PackageState::Render,
+        ..Default::default()
+    };
+    let fields = [
+        ("size", Value::Void),
+        (RENDER_TAG, Value::String("Tag".into())),
+    ]
+    .into_iter()
+    .collect();
+    let array = Value::Array(vec![
+        Value::Void,
+        Value::Instance(Rc::new(Instance {
+            structure: Rc::new(structure),
+            fields,
+        })),
+    ]);
+    let expected = "";
+    let env = Environment::default();
+    assert_eq!(write_to_string(evaluator(&env), array), expected)
 }
 
 #[test]
@@ -127,6 +167,39 @@ fn test_instance_normal() {
         .collect();
     let expected = r#"Tag: {size: 42,}"#;
     test_instance_to_value(Struct::default(), fields, expected)
+}
+
+#[test]
+fn test_instance_empty() {
+    let structure = Struct {
+        package_state: PackageState::Render,
+        ..Default::default()
+    };
+    let fields = [
+        ("size", Value::Void),
+        (RENDER_TAG, Value::String("Tag".into())),
+    ]
+    .into_iter()
+    .collect();
+    let expected = "";
+    test_instance_to_value(structure, fields, expected)
+}
+
+#[test]
+fn test_nested_empty_instance() {
+    let structure = Struct {
+        package_state: PackageState::Render,
+        ..Default::default()
+    };
+    let fields = [
+        ("size", Value::Void),
+        ("content", Value::Array(vec![Value::Void, Value::Void])),
+        (RENDER_TAG, Value::String("Tag".into())),
+    ]
+    .into_iter()
+    .collect();
+    let expected = "";
+    test_instance_to_value(structure, fields, expected)
 }
 
 fn test_instance_to_value(structure: Struct, fields: HashMap<&str, Value>, expected: &str) {
