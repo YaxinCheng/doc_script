@@ -1,6 +1,7 @@
 use crate::ast::abstract_tree;
 use crate::env::Environment;
 use crate::parser::parse;
+use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 
 #[test]
@@ -178,6 +179,9 @@ fn test_cycle_ref_in_struct_init_body() {
 }
 
 fn test_constant_field_cycle_reference(program: &str, module_paths: Vec<Vec<&str>>) {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     let mut syntax_trees = vec![abstract_tree(parse(tokenize(program)))];
     Environment::builder()
         .add_modules(&module_paths)

@@ -6,6 +6,7 @@ use crate::env::checks::type_checking::types::Types;
 use crate::env::checks::type_checking::TypeChecker;
 use crate::env::Environment;
 use crate::parser::parse;
+use crate::tests::FormulaSuppress;
 use crate::tokenizer::{tokenize, LiteralKind};
 
 #[test]
@@ -42,6 +43,9 @@ fn test_literals(kind: LiteralKind, expected: Types) {
 
 #[test]
 fn test_resolve_struct() {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     let mut syntax_trees = vec![abstract_tree(parse(tokenize(
         r#"
         struct Empty
@@ -83,6 +87,9 @@ fn test_resolve_struct() {
 
 #[test]
 fn test_resolve_from_block() {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     let mut syntax_trees = vec![abstract_tree(parse(tokenize(
         r#"
         const a = {
@@ -117,6 +124,12 @@ fn test_resolve_from_block() {
 
 #[test]
 fn test_resolve_field_access_from_block() {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     let mut syntax_trees = vec![abstract_tree(parse(tokenize(
         r#"
         struct A(field: String)
@@ -233,6 +246,9 @@ fn test_type_constant_points_to_struct() {
 }
 
 fn test_type_access_internal(program: &str) {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     let mut syntax_trees = vec![abstract_tree(parse(tokenize(program)))];
     let module_paths = vec![vec![]];
     let env = Environment::builder()
@@ -263,6 +279,9 @@ fn test_type_access_internal(program: &str) {
 
 #[test]
 fn test_access_field_with_trait_type() {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     let program = r#"
     trait Trait(value: Int)
     struct Impl(value: Int)
@@ -338,6 +357,9 @@ fn test_void_type_full() {
 }
 
 fn test_void_type_in_const(program: &str) {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     let module_paths = vec![vec![]];
     let mut syntax_trees = [abstract_tree(parse(tokenize(program)))];
     let env = Environment::builder()
@@ -363,6 +385,9 @@ fn test_void_type_in_const(program: &str) {
 
 #[test]
 fn test_void_type_impl_trait() {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     let mut syntax_trees = [
         abstract_tree(parse(tokenize("trait Test(marker: Void)\n"))),
         abstract_tree(parse(tokenize("struct Collection(test: Test)\n"))),

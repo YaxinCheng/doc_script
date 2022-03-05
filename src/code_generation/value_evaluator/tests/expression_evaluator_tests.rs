@@ -4,6 +4,7 @@ use super::get_constant;
 use crate::ast::abstract_tree;
 use crate::env::Environment;
 use crate::parser::parse;
+use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 
 #[test]
@@ -36,6 +37,9 @@ fn test_chaining_method_with_default() {
 }
 
 fn test_instance(program: &str, field: &str, expected: Value) {
+    let checkers = FormulaSuppress::all();
+    checkers.suppress();
+
     let mut syntax_trees = [abstract_tree(parse(tokenize(program)))];
     let env = Environment::builder()
         .add_modules(&[vec![]])
@@ -107,6 +111,9 @@ fn test_block_returns_void() {
 }
 
 fn test_expression(program: &str, expected: Value) {
+    let checkers = FormulaSuppress::all();
+    checkers.suppress();
+
     let mut syntax_trees = [abstract_tree(parse(tokenize(program)))];
     let env = Environment::builder()
         .add_modules(&[vec![]])

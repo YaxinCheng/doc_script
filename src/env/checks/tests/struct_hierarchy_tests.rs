@@ -1,6 +1,7 @@
 use crate::ast::{abstract_tree, AbstractSyntaxTree, StructDeclaration};
 use crate::env::checks::{Error, StructHierarchyChecker};
 use crate::parser::parse;
+use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 use std::collections::HashSet;
 
@@ -50,6 +51,9 @@ fn test_attribute_reference_to_self() {
 }
 
 fn test_hierarchy_check(program: &str) -> Result<(), Error> {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     let mut syntax_trees = vec![abstract_tree(parse(tokenize(program)))];
     let module_paths = vec![vec![]];
     let env = crate::env::Environment::builder()
@@ -80,6 +84,9 @@ fn get_declaration<'ast, 'a>(
 
 #[test]
 fn test_with_whitelist() {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     let mut syntax_trees = vec![abstract_tree(parse(tokenize(
         r#"
     struct A(field: B)

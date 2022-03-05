@@ -17,6 +17,8 @@ scope_macro = { path = "scope_macro" }
 quickcheck = "1"
 quickcheck_macros = "1"
 enum-as-inner = "0.3"
+tempdir = "0.3"
+lazy_static = "1.4"
 
 [build-dependencies]
 walkdir = "2.3"

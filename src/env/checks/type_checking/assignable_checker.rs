@@ -20,6 +20,7 @@ impl<'ast, 'a, 'env, 'checker> AssignableChecker<'ast, 'a, 'env, 'checker> {
         source == target
             || match target {
                 r#trait @ Types::Trait(_) => self.conforms_to_trait(source, r#trait),
+                Types::Children => matches!(source, Types::Void),
                 _ => false,
             }
             || RenderImplChecker(self.0.environment).check(source, target)
@@ -68,6 +69,7 @@ mod type_conform_checker_tests {
     use crate::env::checks::type_checking::TypeChecker;
     use crate::env::Environment;
     use crate::parser::parse;
+    use crate::tests::FormulaSuppress;
     use crate::tokenizer::tokenize;
 
     fn type_checker<'ast, 'a, 'env>(
@@ -149,6 +151,9 @@ mod type_conform_checker_tests {
     }
 
     fn test_struct_conform_trait(struct_declaration: &str) {
+        let checkers = FormulaSuppress::all();
+        checkers.suppress();
+
         let mut syntax_trees = [
             abstract_tree(parse(tokenize(struct_declaration))),
             abstract_tree(parse(tokenize("trait T(field1: Int, field2: String)\n"))),
@@ -168,6 +173,9 @@ mod type_conform_checker_tests {
 
     #[test]
     fn test_trait_conform_trait() {
+        let checkers = FormulaSuppress::all();
+        checkers.suppress();
+
         let mut syntax_trees = [
             abstract_tree(parse(tokenize(
                 "trait SubT(field: Int, another: String, field2: String)\n",
@@ -189,6 +197,9 @@ mod type_conform_checker_tests {
 
     #[test]
     fn test_any_trait() {
+        let checkers = FormulaSuppress::all();
+        checkers.suppress();
+
         let mut syntax_trees = [abstract_tree(parse(tokenize("trait Any\n")))];
         let module_paths = [vec![]];
         let env = Environment::builder()
@@ -233,6 +244,9 @@ mod type_conform_checker_tests {
 
     #[test]
     fn test_two_level_recursive_conform() {
+        let checkers = FormulaSuppress::all();
+        checkers.suppress();
+
         let mut syntax_trees = [abstract_tree(parse(tokenize(
             r#"
                 trait Id(number: Int)

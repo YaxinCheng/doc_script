@@ -5,6 +5,7 @@ use crate::ast::abstract_tree;
 use crate::code_generation::value_evaluator::value::Value;
 use crate::env::Environment;
 use crate::parser::parse;
+use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 
 #[test]
@@ -61,6 +62,9 @@ fn test_access_attr_refers_to_field() {
 }
 
 fn test_evaluated_value(program: &str, accesses: &[&str], expected: Value) {
+    let checkers = FormulaSuppress::all();
+    checkers.suppress();
+
     let mut syntax_trees = [abstract_tree(parse(tokenize(program)))];
     let env = Environment::builder()
         .add_modules(&[vec![]])

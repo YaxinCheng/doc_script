@@ -1,6 +1,6 @@
 pub use super::name_resolution::Resolved;
-use super::scope::{Scope, ScopeId, GLOBAL_SCOPE};
-use crate::ast::Name;
+use super::scope::{DeclaredElement, Scope, ScopeId, GLOBAL_SCOPE};
+use crate::ast::{ConstantDeclaration, Name};
 use crate::env::EnvironmentBuilder;
 use std::collections::HashMap;
 
@@ -49,5 +49,22 @@ impl<'ast, 'a> Environment<'ast, 'a> {
         };
         self.scopes.push(child);
         self.scopes.last_mut().expect("Child scope expected")
+    }
+
+    pub fn entry(&self) -> Option<&'ast ConstantDeclaration<'a>> {
+        self.scopes
+            .get(0)?
+            .name_spaces
+            .declared
+            .get("Main")
+            .map(|declared| match declared {
+                DeclaredElement::Constant(constant) => *constant,
+                DeclaredElement::Struct(_) => {
+                    panic!("Main can only be declared as constant. Found struct")
+                }
+                DeclaredElement::Trait(_) => {
+                    panic!("Main can only be declared as constant. Found trait")
+                }
+            })
     }
 }

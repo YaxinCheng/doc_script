@@ -1,10 +1,10 @@
 const N: usize = include!(concat!(env!("OUT_DIR"), "/stdlib_count.rs"));
 
-pub fn content() -> [&'static str; N] {
+pub const fn content() -> [&'static str; N] {
     include!(concat!(env!("OUT_DIR"), "/stdlib.rs"))
 }
 
-pub fn paths() -> [&'static str; N] {
+pub const fn paths() -> [&'static str; N] {
     include!(concat!(env!("OUT_DIR"), "/stdlib_path.rs"))
 }
 

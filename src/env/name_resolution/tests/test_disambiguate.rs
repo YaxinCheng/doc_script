@@ -6,6 +6,9 @@ use crate::tokenizer::tokenize;
 
 macro_rules! test_disambiguate {
     ($syntax_trees: expr, $module_paths: expr, $name: expr) => {{
+        let formula = crate::tests::FormulaSuppress::all();
+        formula.suppress();
+
         let mut env = Environment::builder()
             .add_modules(&$module_paths)
             .generate_scopes(&mut $syntax_trees)

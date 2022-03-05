@@ -10,7 +10,7 @@ pub struct InstanceEvaluator<'ast, 'a, 'env, 'res> {
     self_ref: Option<Value<'ast, 'a>>,
 }
 
-const INIT_CONTENT: &str = "$init_content";
+const INIT_CONTENT: &str = "children";
 
 impl<'ast, 'a, 'env, 'res> InstanceEvaluator<'ast, 'a, 'env, 'res> {
     pub fn new(

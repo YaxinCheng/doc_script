@@ -1,8 +1,7 @@
-use super::checks::StructHierarchyChecker;
 use super::construction;
 use super::{declaration_resolution, name_resolution, Environment};
 use crate::ast::AbstractSyntaxTree;
-use crate::env::checks::type_checking::TypeChecker;
+use crate::env::checks;
 
 const CONSTRUCTED: usize = 0;
 const MODULE_ADDED: usize = 1;
@@ -41,10 +40,7 @@ impl<'ast, 'a> EnvironmentBuilder<'ast, 'a, CONSTRUCTED> {
         let module_paths = paths.map(Self::convert_to_module);
         self.module_paths.extend(module_paths);
         construction::add_modules(&mut self.environment, &self.module_paths);
-        EnvironmentBuilder {
-            environment: self.environment,
-            module_paths: self.module_paths,
-        }
+        self.migrate()
     }
 
     #[cfg(test)]
@@ -54,19 +50,14 @@ impl<'ast, 'a> EnvironmentBuilder<'ast, 'a, CONSTRUCTED> {
     ) -> EnvironmentBuilder<'ast, 'a, MODULE_ADDED> {
         self.module_paths.extend_from_slice(module_paths);
         construction::add_modules(&mut self.environment, &self.module_paths);
-        EnvironmentBuilder {
-            environment: self.environment,
-            module_paths: self.module_paths,
-        }
+        self.migrate()
     }
 
     fn convert_to_module(file_name: &str) -> Vec<&str> {
-        file_name
-            .rsplit_once(std::path::MAIN_SEPARATOR)
-            .unwrap_or(("", ""))
-            .0
-            .split(std::path::MAIN_SEPARATOR)
-            .collect()
+        match file_name.rsplit_once(std::path::MAIN_SEPARATOR) {
+            Some((path, _)) => path.split(std::path::MAIN_SEPARATOR).collect(),
+            None => vec![],
+        }
     }
 }
 
@@ -87,33 +78,11 @@ impl<'ast, 'a> EnvironmentBuilder<'ast, 'a, MODULE_ADDED> {
         syntax_trees: &mut [AbstractSyntaxTree<'a>],
     ) -> EnvironmentBuilder<'ast, 'a, SCOPE_GENERATED> {
         construction::generate_scope(&mut self.environment, syntax_trees, &self.module_paths);
-        EnvironmentBuilder {
-            environment: self.environment,
-            module_paths: self.module_paths,
-        }
+        self.migrate()
     }
 }
 
 impl<'ast, 'a> EnvironmentBuilder<'ast, 'a, SCOPE_GENERATED> {
-    #[cfg(test)]
-    pub fn prelude_std(mut self) -> Self {
-        let prelude_modules = [
-            &["std"] as &[_],
-            &["std", "essential"],
-            &["std", "essential", "Render"],
-        ]
-        .map(|module_name| {
-            self.environment
-                .find_module(module_name)
-                .unwrap_or_else(|| panic!("Cannot find module `{}`", module_name.join(".")))
-        });
-        let global_scope = self.environment.get_scope_mut(0);
-        global_scope
-            .name_spaces
-            .wildcard_imports
-            .extend(prelude_modules);
-        self
-    }
     ///
     pub fn resolve_names(
         mut self,
@@ -125,10 +94,7 @@ impl<'ast, 'a> EnvironmentBuilder<'ast, 'a, SCOPE_GENERATED> {
             &self.module_paths,
         );
         name_resolution::resolve(&mut self.environment, unresolved_names);
-        EnvironmentBuilder {
-            environment: self.environment,
-            module_paths: self.module_paths,
-        }
+        self.migrate()
     }
 }
 
@@ -137,17 +103,20 @@ impl<'ast, 'a> EnvironmentBuilder<'ast, 'a, NAME_RESOLVED> {
         self,
         syntax_trees: &'ast [AbstractSyntaxTree<'a>],
     ) -> EnvironmentBuilder<'ast, 'a, VALIDATED> {
-        TypeChecker::with_environment(&self.environment).check(syntax_trees);
-        StructHierarchyChecker::with_environment(&self.environment).check(syntax_trees);
-        EnvironmentBuilder {
-            environment: self.environment,
-            module_paths: self.module_paths,
-        }
+        checks::check(&self.environment, syntax_trees);
+        self.migrate()
     }
 }
 
 impl<'ast, 'a, const STATE: usize> EnvironmentBuilder<'ast, 'a, STATE> {
     pub fn build(self) -> Environment<'ast, 'a> {
         self.environment
+    }
+
+    fn migrate<const NEXT: usize>(self) -> EnvironmentBuilder<'ast, 'a, NEXT> {
+        EnvironmentBuilder {
+            environment: self.environment,
+            module_paths: self.module_paths,
+        }
     }
 }

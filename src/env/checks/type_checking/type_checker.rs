@@ -1,5 +1,6 @@
 use super::super::hash;
 use super::assignable_checker::AssignableChecker;
+use super::error::*;
 use super::essential_trait;
 use super::struct_init_checker::StructInitChecker;
 use super::type_resolver;
@@ -43,6 +44,16 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
                 self.resolve_declaration(declaration);
             }
         }
+    }
+
+    pub fn entry_check(&mut self) {
+        let entry = self.environment.entry().expect("Main cannot be found");
+        let entry_type = self.resolve_expression(&entry.value);
+        let render_trait = essential_trait::render(self.environment);
+        assert!(
+            AssignableChecker(self).check(&entry_type, &render_trait),
+            "Entry needs to conform trait Render. `{entry_type}` does not conform trait `Render`"
+        );
     }
 
     fn resolve_declaration(&mut self, declaration: &'ast Declaration<'a>) {
@@ -175,27 +186,43 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
             .iter()
             .map(|parameter| self.resolve_expression(parameter.expression()))
             .collect::<Vec<_>>();
-        StructInitChecker(AssignableChecker(self))
+        let (fields, field_types) = if let Some(init_content) = init_content {
+            self.check_can_have_init_content(field_types.last())
+                .unwrap_or_else(|error| {
+                    panic!("struct `{struct_type}` cannot have init content. Error: {error}")
+                });
+            self.resolve_init_content(init_content)
+                .expect("init content has non render-able content");
+            (
+                &fields[..fields.len() - 1],
+                &field_types[..field_types.len() - 1],
+            )
+        } else {
+            (fields, field_types.as_slice())
+        };
+        StructInitChecker::new(AssignableChecker(self))
             .check_parameters(parameters, parameter_types, fields, field_types)
             .expect("Failed struct field type check");
-        init_content
-            .iter()
-            .for_each(|init_content| self.resolve_init_content(init_content));
         struct_type
     }
 
-    fn resolve_init_content(&mut self, init_content: &'ast StructInitContent<'a>) {
-        let render_trait =
-            essential_trait::render(self.environment).expect("Render trait not found");
-        let render_type = Types::Trait(render_trait);
+    fn check_can_have_init_content(&mut self, field_type: Option<&Types>) -> Result<()> {
+        match field_type {
+            Some(Types::Children) => Ok(()),
+            None => Err(Error::NotExpectingChildren),
+            _ => Err(Error::LastFieldIsNotChildren),
+        }
+    }
+
+    fn resolve_init_content(&mut self, init_content: &'ast StructInitContent<'a>) -> Result<()> {
+        let render_trait = essential_trait::render(self.environment);
         for expression in &init_content.0 {
             let expr_type = self.resolve_expression(expression);
-            assert!(
-                AssignableChecker(self).check(&expr_type, &render_type),
-                "Types in init content must implement Render trait. Found: {}",
-                expr_type
-            )
+            if !AssignableChecker(self).check(&expr_type, &render_trait) {
+                return Err(Error::InitContentNotRender(expr_type.to_string()));
+            }
         }
+        Ok(())
     }
 
     fn resolve_chaining_method(

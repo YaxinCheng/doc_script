@@ -1,6 +1,7 @@
 use super::super::scope::*;
 use super::{Environment, Resolved};
 use crate::search::Traversal;
+use std::collections::HashSet;
 
 pub(in crate::env) struct ResolveHelper<'ast, 'a, 'env>(pub &'env Environment<'ast, 'a>);
 
@@ -15,12 +16,19 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
             GLOBAL_SCOPE => None,
             _ => Some(self.0.get_scope(scope.parent)),
         });
-        traverse_to_global.find_map(|scope| self.try_resolve_name(scope, name))
+        let mut searched_scopes = HashSet::new();
+        traverse_to_global
+            .find_map(|scope| self.try_resolve_name(scope, name, &mut searched_scopes))
     }
 
-    fn try_resolve_name(&self, scope: &Scope<'ast, 'a>, name: &str) -> Option<Resolved<'ast, 'a>> {
+    fn try_resolve_name(
+        &self,
+        scope: &Scope<'ast, 'a>,
+        name: &str,
+        searched_scopes: &mut HashSet<ScopeId>,
+    ) -> Option<Resolved<'ast, 'a>> {
         Self::resolve_declared(scope, name)
-            .or_else(|| self.resolve_from_wildcard_imports(scope, name))
+            .or_else(|| self.resolve_from_wildcard_imports(scope, name, searched_scopes))
             .or_else(|| Self::resolve_mod(scope, name))
     }
 
@@ -40,14 +48,20 @@ impl<'ast, 'a, 'env> ResolveHelper<'ast, 'a, 'env> {
         &self,
         scope: &Scope<'ast, 'a>,
         name: &str,
+        searched_scopes: &mut HashSet<ScopeId>,
     ) -> Option<Resolved<'ast, 'a>> {
         let mut resolved = scope
             .name_spaces
             .wildcard_imports
             .iter()
             .copied()
-            .map(|scope_id| self.0.get_scope(scope_id))
-            .filter_map(|scope| self.try_resolve_name(scope, name))
+            .filter_map(|scope_id| match searched_scopes.insert(scope_id) {
+                true => {
+                    let scope = self.0.get_scope(scope_id);
+                    self.try_resolve_name(scope, name, searched_scopes)
+                }
+                false => None,
+            })
             .take(2)
             .collect::<Vec<_>>();
         if resolved.len() > 1 {

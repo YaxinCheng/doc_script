@@ -3,6 +3,7 @@ use crate::env::name_resolution::TypeLinker;
 use crate::env::scope::{ScopeId, Scoped, GLOBAL_SCOPE};
 use crate::env::{declaration_resolution, Environment};
 use crate::parser::parse;
+use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 
 #[test]
@@ -50,6 +51,9 @@ fn test_call_on_constant() {
 }
 
 fn test_type_linking(program: &str, source_scope: ScopeId) {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     let module_path: Vec<Vec<&str>> = vec![vec![]];
     let mut syntax_trees = vec![abstract_tree(parse(tokenize(program)))];
     let mut env = Environment::builder()

@@ -18,7 +18,7 @@ fn test_find_render_trait() {
         .generate_scopes(&mut syntax_trees)
         .resolve_names(&syntax_trees)
         .build();
-    assert!(essential_trait::render(&environment).is_some())
+    essential_trait::render(&environment);
 }
 
 #[test]
@@ -32,7 +32,6 @@ struct MyPage {
     let environment = Environment::builder()
         .add_modules(&module_paths)
         .generate_scopes(&mut syntax_trees)
-        .prelude_std()
         .resolve_names(&syntax_trees)
         .build();
 
@@ -46,9 +45,7 @@ struct MyPage {
             .as_struct()
             .map(Types::Struct)
     );
-    let target = essential_trait::render(&environment)
-        .map(Types::Trait)
-        .unwrap();
+    let target = essential_trait::render(&environment);
     let mut type_checker = TypeChecker::with_environment(&environment);
     let mut checker = AssignableChecker(&mut type_checker);
     assert!(checker.check(&source, &target))

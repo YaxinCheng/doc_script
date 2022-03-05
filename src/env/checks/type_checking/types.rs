@@ -9,6 +9,7 @@ pub enum Types<'ast, 'a> {
     Float,
     Bool,
     String,
+    Children,
     Struct(&'ast StructDeclaration<'a>),
     Trait(&'ast TraitDeclaration<'a>),
 }
@@ -17,7 +18,12 @@ impl<'ast, 'a> PartialEq for Types<'ast, 'a> {
     fn eq(&self, other: &Self) -> bool {
         use Types::*;
         match (self, other) {
-            (Int, Int) | (Float, Float) | (Void, Void) | (Bool, Bool) | (String, String) => true,
+            (Int, Int)
+            | (Float, Float)
+            | (Void, Void)
+            | (Bool, Bool)
+            | (String, String)
+            | (Children, Children) => true,
             (Struct(self_struct), Struct(other_struct)) => {
                 std::ptr::eq(*self_struct, *other_struct)
             }
@@ -67,6 +73,7 @@ impl<'ast, 'a> Types<'ast, 'a> {
         match self {
             Self::Trait(r#trait) => r#trait.name,
             Self::Struct(r#struct) => r#struct.name,
+            Self::Children => "Children",
             Self::Int => "Int",
             Self::String => "String",
             Self::Void => "Void",

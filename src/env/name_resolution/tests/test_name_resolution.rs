@@ -2,6 +2,7 @@ use crate::ast::{abstract_tree, ConstantDeclaration, Name, StructDeclaration};
 use crate::env::scope::{Scoped, GLOBAL_SCOPE};
 use crate::env::Environment;
 use crate::parser::parse;
+use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 
 macro_rules! try_block {
@@ -13,6 +14,9 @@ macro_rules! try_block {
 
 #[test]
 fn resolve_module_constant() {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     let mut syntax_trees = vec![
         abstract_tree(parse(tokenize("const a = test.target\n"))),
         abstract_tree(parse(tokenize("const target = 3\n"))),
@@ -44,6 +48,9 @@ fn resolve_module_constant() {
 
 #[test]
 fn resolve_module_struct() {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     let mut syntax_trees = vec![
         abstract_tree(parse(tokenize("const a = empty.Empty()\n"))),
         abstract_tree(parse(tokenize("struct Empty\n"))),

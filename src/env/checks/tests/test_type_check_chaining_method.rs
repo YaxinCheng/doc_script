@@ -4,6 +4,7 @@ use crate::env::checks::type_checking::types::Types;
 use crate::env::checks::type_checking::TypeChecker;
 use crate::env::Environment;
 use crate::parser::parse;
+use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 
 #[test]
@@ -77,6 +78,9 @@ fn test_chaining_method_from_constant() {
 }
 
 fn test_chaining_method_invoke(program: &str) {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     use crate::ast::{Expression, StructDeclaration};
     let mut syntax_trees = vec![abstract_tree(parse(tokenize(program)))];
     let module_paths = vec![vec![]];

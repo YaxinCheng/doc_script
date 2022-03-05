@@ -52,8 +52,12 @@ impl<'ast, 'a, 'env> TypeLinker<'ast, 'a, 'env> {
     }
 
     fn is_primitive_type(name: &'ast Name<'a>) -> bool {
-        let is_primitive_name =
-            |name: &str| matches!(name, "Int" | "Float" | "String" | "Bool" | "Void");
+        let is_primitive_name = |name: &str| {
+            matches!(
+                name,
+                "Int" | "Float" | "String" | "Bool" | "Void" | "Children"
+            )
+        };
         match &name.moniker {
             Moniker::Simple(name) => is_primitive_name(name),
             Moniker::Qualified(full_name) => {

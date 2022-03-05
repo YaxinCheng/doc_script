@@ -3,6 +3,7 @@ use crate::ast::abstract_tree;
 use crate::env::declaration_resolution;
 use crate::env::Environment;
 use crate::parser::parse;
+use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 
 #[test]
@@ -38,6 +39,9 @@ fn test_resolve_constant_from_struct_body() {
 }
 
 fn test_resolve_from_wildcard_import(programs: [&'static str; 2]) {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     let module_path: Vec<Vec<&str>> = vec![vec!["test", "source"], vec!["test", "target"]];
     let mut syntax_trees = programs
         .into_iter()
@@ -70,6 +74,9 @@ fn test_resolve_from_wildcard_import(programs: [&'static str; 2]) {
 
 #[test]
 fn test_unresolvable_name() {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     let module_path: Vec<Vec<&str>> = vec![vec!["test", "source"], vec!["test", "target"]];
     let mut syntax_trees = vec![
         abstract_tree(parse(tokenize("const name = \"Test Name\"\n"))),
@@ -93,6 +100,9 @@ fn test_unresolvable_name() {
 
 #[test]
 fn test_shaded_name() {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
     let module_path: Vec<Vec<&str>> = vec![vec!["test", "source"], vec!["test", "target"]];
     let mut syntax_trees = vec![
         abstract_tree(parse(tokenize("const name = \"Test Name\"\n"))),
@@ -143,6 +153,21 @@ fn test_ambiguous_wildcard_imports() {
     ];
     let _ = Environment::builder()
         .add_modules(&module_path)
+        .generate_scopes(&mut syntax_trees)
+        .resolve_names(&syntax_trees)
+        .build();
+}
+
+#[test]
+#[should_panic]
+fn test_cycling_wildcard_imports() {
+    let module_paths = [vec!["first"], vec!["second"]];
+    let mut syntax_trees = [
+        abstract_tree(parse(tokenize("const name = second_name\n"))),
+        abstract_tree(parse(tokenize("const not_second_name = 42\n"))),
+    ];
+    let _ = Environment::builder()
+        .add_modules(&module_paths)
         .generate_scopes(&mut syntax_trees)
         .resolve_names(&syntax_trees)
         .build();

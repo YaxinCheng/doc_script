@@ -8,6 +8,9 @@ use crate::tokenizer::tokenize;
 
 macro_rules! import {
     ($env: ident, $code: expr) => {
+        let formula = crate::tests::FormulaSuppress::all();
+        formula.suppress();
+
         let module_paths = [vec![], vec!["test"], vec!["test", "nested"]];
         let syntax_trees = [
             abstract_tree(parse(tokenize(concat!($code, "\n")))),

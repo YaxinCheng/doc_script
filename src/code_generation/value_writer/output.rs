@@ -1,5 +1,4 @@
-use std::fs::File;
-use std::io::{BufWriter, Seek, SeekFrom, Write};
+use std::io::Write;
 
 pub trait Output: Write {
     type Pos: Eq;
@@ -7,7 +6,6 @@ pub trait Output: Write {
     fn truncate(&mut self, new_len: Self::Pos);
 }
 
-#[cfg(test)]
 impl Output for Vec<u8> {
     type Pos = usize;
 
@@ -20,15 +18,15 @@ impl Output for Vec<u8> {
     }
 }
 
-impl Output for BufWriter<File> {
-    type Pos = u64;
-
-    fn position(&self) -> u64 {
-        self.get_ref().stream_position().expect("Current position")
-    }
-
-    fn truncate(&mut self, new_len: u64) {
-        self.get_mut().set_len(new_len).expect("Set len");
-        self.seek(SeekFrom::End(0)).expect("Move cursor to end");
-    }
-}
+// impl Output for BufWriter<File> {
+//     type Pos = u64;
+//
+//     fn position(&self) -> u64 {
+//         self.get_ref().stream_position().expect("Current position")
+//     }
+//
+//     fn truncate(&mut self, new_len: u64) {
+//         self.get_mut().set_len(new_len).expect("Set len");
+//         self.seek(SeekFrom::End(0)).expect("Move cursor to end");
+//     }
+// }

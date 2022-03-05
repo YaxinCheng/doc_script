@@ -1,3 +1,4 @@
+use super::super::scope::GLOBAL_SCOPE;
 use super::super::scope::{DeclaredElement, Scope, ScopeId};
 use super::Environment;
 use crate::ast::{AbstractSyntaxTree, Declaration, Import};
@@ -8,18 +9,18 @@ pub(in crate::env::declaration_resolution) struct Importer<'ast, 'a, 'env>(
 
 impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
     pub fn insert_std_lib(&mut self) -> &mut Self {
-        #[cfg(not(test))]
-        {
-            use super::super::scope::GLOBAL_SCOPE;
-            let std = [
-                self.process_wildcard_import(&["std"]),
-                self.process_wildcard_import(&["std", "essential"]),
-                self.process_wildcard_import(&["std", "essential", "Render"]),
-            ];
-            let global_scope = self.0.get_scope_mut(GLOBAL_SCOPE);
-            for stdlib in std {
-                stdlib.import_to(global_scope);
-            }
+        #[cfg(test)]
+        if crate::tests::FormulaSuppress::prelude_std_suppressed() {
+            return self;
+        }
+        let std = [
+            self.process_wildcard_import(&["std"]),
+            self.process_wildcard_import(&["std", "essential"]),
+            self.process_wildcard_import(&["std", "essential", "Render"]),
+        ];
+        let global_scope = self.0.get_scope_mut(GLOBAL_SCOPE);
+        for stdlib in std {
+            stdlib.import_to(global_scope);
         }
         self
     }

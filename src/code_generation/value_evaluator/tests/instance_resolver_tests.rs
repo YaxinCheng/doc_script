@@ -8,6 +8,7 @@ use crate::code_generation::value::{Instance, Struct};
 use crate::code_generation::value_evaluator::value::Value;
 use crate::env::Environment;
 use crate::parser::parse;
+use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 use std::borrow::Cow;
 use std::rc::Rc;
@@ -191,6 +192,9 @@ fn test_attribute_refers_to_attribute_with_self() {
 }
 
 fn test_instance_attributes(program: &str, expectations: Vec<(&str, Value)>) {
+    let checkers = FormulaSuppress::all();
+    checkers.suppress();
+
     let mut syntax_tree = [abstract_tree(parse(tokenize(program)))];
     let env = Environment::builder()
         .add_modules(&[vec![]])
