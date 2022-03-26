@@ -111,6 +111,11 @@ impl<'a> Tokenizer<'a> {
         self.non_literal_token(whitespace::whitespace, TokenKind::WhiteSpace)
     }
 
+    /// New lines at lines without meaningful content are treated as whitespace
+    /// Non meaningful lines include:
+    /// 1. Empty line
+    /// 2. Lines with only indentations/spaces
+    /// 3. Lines with only comments
     fn adjust_meaning_content(&mut self, token: &Token) {
         match token {
             Token {
@@ -129,6 +134,13 @@ impl<'a> Tokenizer<'a> {
         }
     }
 
+    /// New line tokens are generated only in following conditions:
+    /// 1. Not in between square brackets
+    /// 2. Not in between parenthesis
+    /// 3. Has meaningful content (see function `adjust_meaning_content`)
+    ///
+    /// Note, curly brackets do not suppress new line tokens from generating
+    /// If any of the above condition is not met, generate a white space token instead
     fn newline_token(&mut self) -> Token<'a> {
         let allowed_in_brackets = matches!(&self.unbalanced_brackets.last(), None | Some('{'));
         let has_meaningful_content = self.meaningful_content_count > 0;
@@ -204,18 +216,10 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn last_token_suppresses_newline(&self) -> bool {
-        matches!(
-            self.last_token,
-            Some(
-                Token {
-                    kind: TokenKind::Separator,
-                    lexeme: "{" | "," | "." | ";"
-                } | Token {
-                    kind: TokenKind::Operator,
-                    lexeme: "="
-                }
-            )
-        )
+        self.last_token
+            .as_ref()
+            .map(Token::suppress_new_line)
+            .unwrap_or_default()
     }
 }
 

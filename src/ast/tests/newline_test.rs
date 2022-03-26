@@ -50,7 +50,31 @@ fn test_struct_content_without_both_newline() {
 #[test]
 #[should_panic]
 fn test_struct_without_newline() {
-    test_struct_init(r#"const value = Test { 42 "hello" }"#)
+    test_struct_init(
+        r#"const value = Test { 42 "hello" }
+    "#,
+    )
+}
+
+#[test]
+fn test_struct_one_liners() {
+    let parse_tree = parse(tokenize("const value = Test { 42 }\n"));
+    let expression = breadth_first_find(parse_tree.root, NodeKind::Expression)
+        .map(Expression::from)
+        .next()
+        .expect("Failed to find expression");
+    let expected = Expression::StructInit {
+        name: Name::simple("Test"),
+        parameters: vec![],
+        init_content: Some(
+            vec![Expression::Literal {
+                kind: LiteralKind::Integer,
+                lexeme: "42",
+            }]
+            .into(),
+        ),
+    };
+    assert_eq!(expression, expected)
 }
 
 fn test_struct_init(text: &str) {
@@ -180,6 +204,99 @@ fn test_constants_separated(program: &str) {
         }),
     ];
     assert_eq!(imports, expected)
+}
+
+#[test]
+fn test_block_one_liner() {
+    let parse_tree = parse(tokenize("const block = { 42 }\n"));
+    let expression = breadth_first_find(parse_tree.root, NodeKind::Expression)
+        .map(Expression::from)
+        .next()
+        .expect("Failed to find expression");
+    let expected = Expression::Block(
+        vec![Statement::Expression(Expression::Literal {
+            kind: LiteralKind::Integer,
+            lexeme: "42",
+        })]
+        .into(),
+    );
+    assert_eq!(expression, expected)
+}
+
+#[test]
+fn test_block_normal() {
+    test_block(
+        r#"const block = {
+    42
+    "hello world"
+    }
+    "#,
+    )
+}
+
+#[test]
+fn test_block_without_starting_new_line() {
+    test_block(
+        r#"const block = {42
+    "hello world"
+    }
+    "#,
+    )
+}
+
+#[test]
+fn test_block_without_ending_new_line() {
+    test_block(
+        r#"const block = {
+    42
+    "hello world"}
+    "#,
+    )
+}
+
+#[test]
+fn test_block_without_new_lines() {
+    test_block(
+        r#"const block = {42
+    "hello world"}
+    "#,
+    )
+}
+
+#[test]
+fn test_block_with_empty_new_lines() {
+    test_block(
+        r#"const block = 
+    {
+       
+        42
+    //comment
+    "hello world"
+        } 
+    "#,
+    )
+}
+
+fn test_block(program: &str) {
+    let parse_tree = parse(tokenize(program));
+    let expression = breadth_first_find(parse_tree.root, NodeKind::Expression)
+        .map(Expression::from)
+        .next()
+        .expect("Failed to find expression");
+    let expected = Expression::Block(
+        vec![
+            Statement::Expression(Expression::Literal {
+                kind: LiteralKind::Integer,
+                lexeme: "42",
+            }),
+            Statement::Expression(Expression::Literal {
+                kind: LiteralKind::String,
+                lexeme: r#""hello world""#,
+            }),
+        ]
+        .into(),
+    );
+    assert_eq!(expression, expected)
 }
 
 fn breadth_first_find(start_node: Node, node_kind: NodeKind) -> impl Iterator<Item = Node> {

@@ -19,7 +19,7 @@ pub fn is_whitespace_or_newline(c: char) -> bool {
 }
 
 pub fn whitespace_and_newline(cursor: &mut Cursor) -> usize {
-    cursor.eat_while(|char| is_whitespace_or_newline(char))
+    cursor.eat_while(is_whitespace_or_newline)
 }
 
 pub fn newline(cursor: &mut Cursor) -> usize {

@@ -18,38 +18,43 @@ pub fn parse<'a>(tokens: impl Iterator<Item = Token<'a>>) -> models::ParseTree<'
     let top = |stack: &[_]| stack.last().cloned().expect("Empty stack");
     let mut tokens = tokens.chain(std::iter::once(parsing::END_TOKEN)).peekable();
     while let Some(token) = tokens.next() {
-        if should_skip(token, tokens.peek()) {
+        if should_skip(&token, tokens.peek()) {
             continue;
         }
-        while let Some(production) = parsing::reduce(top(&state_stack), token) {
-            let new_stack_size = node_stack.len() - production.rhs.len();
-            let children = node_stack.drain(new_stack_size..).collect::<Vec<_>>();
-            state_stack.truncate(new_stack_size);
+        let normalized_tokens = insert_new_line_if_necessary(token, tokens.peek());
+        for token in normalized_tokens {
+            while let Some(production) = parsing::reduce(top(&state_stack), token) {
+                let new_stack_size = node_stack.len() - production.rhs.len();
+                let children = node_stack.drain(new_stack_size..).collect::<Vec<_>>();
+                state_stack.truncate(new_stack_size);
 
-            node_stack.push(Node::Internal {
-                kind: production.lhs,
-                children,
-            });
+                node_stack.push(Node::Internal {
+                    kind: production.lhs,
+                    children,
+                });
+                state_stack.push(
+                    parsing::transit(top(&state_stack), Symbol::NonTerminal(production.lhs))
+                        .unwrap_or_else(|| {
+                            panic!("Unable to transit. node_stack={:?}", node_stack)
+                        }),
+                );
+            }
+            node_stack.push(Node::Leaf(token));
             state_stack.push(
-                parsing::transit(top(&state_stack), Symbol::NonTerminal(production.lhs))
-                    .unwrap_or_else(|| panic!("Unable to transit. node_stack={:?}", node_stack)),
+                parsing::transit(top(&state_stack), Symbol::Terminal(token)).unwrap_or_else(|| {
+                    panic!(
+                        "Parsing error at token: {:?}. Stack: {:?}",
+                        token, state_stack
+                    )
+                }),
             );
         }
-        node_stack.push(Node::Leaf(token));
-        state_stack.push(
-            parsing::transit(top(&state_stack), Symbol::Terminal(token)).unwrap_or_else(|| {
-                panic!(
-                    "Parsing error at token: {:?}. Stack: {:?}",
-                    token, state_stack
-                )
-            }),
-        );
     }
     node_stack.pop();
     ParseTree::from(node_stack.pop().expect("node_stack is empty"))
 }
 
-fn should_skip(token: Token, next_token: Option<&Token>) -> bool {
+fn should_skip(token: &Token, next_token: Option<&Token>) -> bool {
     matches!(
         (token, next_token),
         (
@@ -59,11 +64,32 @@ fn should_skip(token: Token, next_token: Option<&Token>) -> bool {
             },
             Some(Token {
                 kind: TokenKind::Separator,
-                lexeme: "."
+                lexeme: "." | ","
             })
         )
     )
 }
+
+fn insert_new_line_if_necessary<'a>(
+    token: Token<'a>,
+    next_token: Option<&Token>,
+) -> Vec<Token<'a>> {
+    match (token, next_token) {
+        (
+            token,
+            Some(Token {
+                kind: TokenKind::Separator,
+                lexeme: "}",
+            }),
+        ) if !token.suppress_new_line() => vec![token, NEW_LINE_TOKEN],
+        _ => vec![token],
+    }
+}
+
+const NEW_LINE_TOKEN: Token<'static> = Token {
+    kind: TokenKind::NewLine,
+    lexeme: "\n",
+};
 
 #[cfg(test)]
 mod parse_tests {

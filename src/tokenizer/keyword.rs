@@ -2,7 +2,6 @@ pub fn is_keyword(s: &str) -> bool {
     matches!(
         s,
         "break"
-            | "default"
             | "const"
             | "continue"
             | "else"
@@ -16,6 +15,7 @@ pub fn is_keyword(s: &str) -> bool {
             | "self"
             | "use"
             | "trait"
+            | "in"
     )
 }
 
@@ -24,8 +24,8 @@ mod keyword_tests {
     use super::is_keyword;
 
     const KEYWORDS: &[&str] = &[
-        "break", "const", "continue", "default", "else", "for", "fn", "if", "impl", "return",
-        "super", "struct", "self", "use", "trait",
+        "break", "const", "continue", "else", "for", "fn", "if", "impl", "return", "super",
+        "struct", "self", "use", "trait", "in",
     ];
 
     #[test]

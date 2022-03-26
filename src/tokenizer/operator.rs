@@ -11,22 +11,13 @@ pub fn operator(cursor: &mut Cursor) -> usize {
     debug_assert!(cursor.first().map(is_operator_start).unwrap_or_default());
     match cursor.bump().unwrap() {
         unary @ '~' => unary.len_utf8(),
-        potential_arrow @ ('-' | '=') => eat_potential_arrow(potential_arrow, cursor),
-        op_with_equals @ ('+' | '!' | '^' | '/' | '%') => {
+        op_with_equals @ ('+' | '-' | '=' | '!' | '^' | '/' | '%') => {
             eat_operator_with_equals(op_with_equals, cursor)
         }
         double_op @ ('*' | '&' | '|') => eat_double_operator(double_op, cursor),
         shift_op @ ('<' | '>') => eat_shift_operator(shift_op, cursor),
         unexpected => unreachable!("Unexpected char for operator: {}", unexpected),
     }
-}
-
-fn eat_potential_arrow(leading: char, cursor: &mut Cursor) -> usize {
-    leading.len_utf8()
-        + match cursor.first() {
-            Some('=' | '>') => cursor.bump().unwrap().len_utf8(),
-            _ => 0,
-        }
 }
 
 // =, ==, +, +=, -, -=, !, !=, ^, ^=, /, /=, %, %=
@@ -70,10 +61,9 @@ mod operator_tests {
 
     use super::{is_operator_start, operator, Cursor};
 
-    const ALL_OPERATORS: [&str; 33] = [
+    const ALL_OPERATORS: [&str; 32] = [
         "=", "==", ">", ">=", ">>", ">>=", "<", "<=", "<<", "<<=", "!", "!=", "~", "+", "+=", "-",
-        "-=", "*", "*=", "/", "/=", "&", "&&", "&=", "|", "||", "|=", "^", "^=", "%", "%=", "->",
-        "=>",
+        "-=", "*", "**", "*=", "/", "/=", "&", "&&", "&=", "|", "||", "|=", "^", "^=", "%", "%=",
     ];
 
     #[test]
@@ -118,14 +108,15 @@ mod operator_tests {
     }
 
     fn quickcheck_operator_tokenizing(s: String) -> TestResult {
-        let suffix;
-        if s.is_empty() || is_operator_start(s.chars().next().expect("Checked by is_empty()")) {
-            suffix = "";
+        let suffix = if s.is_empty()
+            || is_operator_start(s.chars().next().expect("Checked by is_empty()"))
+        {
+            ""
         } else {
-            suffix = &s;
-        }
+            &s
+        };
         for target in ALL_OPERATORS {
-            let text = format!("{}{}", target, suffix);
+            let text = [target, suffix].concat();
             let mut cursor = Cursor::from_iter(text.chars());
             if operator(&mut cursor) != target.len() {
                 return TestResult::from_bool(false);
