@@ -3,6 +3,7 @@ mod parsing;
 mod rules;
 
 use super::tokenizer::{LiteralKind, Token, TokenKind};
+use crate::iterating::Iterating;
 pub use models::ParseTree;
 use models::Symbol;
 pub use models::{Node, NodeKind};
@@ -15,13 +16,10 @@ pub fn parse<'a>(tokens: impl Iterator<Item = Token<'a>>) -> models::ParseTree<'
                 .expect("Unable to start"),
         ];
     let mut node_stack: Vec<Node> = vec![Node::Leaf(parsing::START_TOKEN)];
-    let top = |stack: &[_]| stack.last().cloned().expect("Empty stack");
+    let top = |stack: &[_]| stack.last().copied().expect("Empty stack");
     let mut tokens = tokens.chain(std::iter::once(parsing::END_TOKEN)).peekable();
     while let Some(token) = tokens.next() {
-        if should_skip(&token, tokens.peek()) {
-            continue;
-        }
-        let normalized_tokens = insert_new_line_if_necessary(token, tokens.peek());
+        let normalized_tokens = skip_or_insert_new_lines(token, tokens.peek());
         for token in normalized_tokens {
             while let Some(production) = parsing::reduce(top(&state_stack), token) {
                 let new_stack_size = node_stack.len() - production.rhs.len();
@@ -54,35 +52,38 @@ pub fn parse<'a>(tokens: impl Iterator<Item = Token<'a>>) -> models::ParseTree<'
     ParseTree::from(node_stack.pop().expect("node_stack is empty"))
 }
 
-fn should_skip(token: &Token, next_token: Option<&Token>) -> bool {
-    matches!(
-        (token, next_token),
+/// Skip or insert new line based on the current and next token.
+/// When it skips, it returns an empty iterator
+/// When it inserts, it return the an iterator with current token followed by a new line token
+/// Otherwise, it returns an iterator containing the current token
+///
+/// condition to skip:
+///     * when the current token is new line and the next token is . or ,
+/// condition to add:
+///     * when the current token does not suppress new line and the next token is curly closing bracket
+fn skip_or_insert_new_lines<'a>(
+    token: Token<'a>,
+    next_token: Option<&Token>,
+) -> impl Iterator<Item = Token<'a>> {
+    match (token, next_token) {
         (
             Token {
                 kind: TokenKind::NewLine,
-                lexeme: _
+                lexeme: _,
             },
             Some(Token {
                 kind: TokenKind::Separator,
-                lexeme: "." | ","
-            })
-        )
-    )
-}
-
-fn insert_new_line_if_necessary<'a>(
-    token: Token<'a>,
-    next_token: Option<&Token>,
-) -> Vec<Token<'a>> {
-    match (token, next_token) {
+                lexeme: "." | ",",
+            }),
+        ) => Iterating::empty(),
         (
             token,
             Some(Token {
                 kind: TokenKind::Separator,
                 lexeme: "}",
             }),
-        ) if !token.suppress_new_line() => vec![token, NEW_LINE_TOKEN],
-        _ => vec![token],
+        ) if !token.suppress_new_line() => Iterating::twice(token, NEW_LINE_TOKEN),
+        _ => Iterating::once(token),
     }
 }
 

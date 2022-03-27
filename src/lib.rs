@@ -5,6 +5,7 @@ use std::path::Path;
 mod ast;
 mod code_generation;
 mod env;
+mod iterating;
 mod parser;
 mod search;
 mod stdlib;

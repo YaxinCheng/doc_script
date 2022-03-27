@@ -2,6 +2,7 @@ use super::super::scope::GLOBAL_SCOPE;
 use super::super::scope::{DeclaredElement, Scope, ScopeId};
 use super::Environment;
 use crate::ast::{AbstractSyntaxTree, Declaration, Import};
+use crate::iterating::Iterating;
 
 pub(in crate::env::declaration_resolution) struct Importer<'ast, 'a, 'env>(
     pub &'env mut Environment<'ast, 'a>,
@@ -38,7 +39,7 @@ impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
                 .find_module(module_path)
                 .unwrap_or_else(|| panic!("Cannot find module: {}", module_path.join(".")));
             let elements = Self::find_imports(syntax_tree)
-                .flat_map(|import| self.process_import(import).into_iter())
+                .flat_map(|import| self.process_import(import))
                 .collect::<Vec<_>>();
             importing_elements.push((target_scope_id, elements));
         }
@@ -64,10 +65,13 @@ impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
             })
     }
 
-    fn process_import(&self, import: &'ast Import<'a>) -> Vec<Importing<'ast, 'a>> {
+    fn process_import(
+        &self,
+        import: &'ast Import<'a>,
+    ) -> impl Iterator<Item = Importing<'ast, 'a>> {
         match import {
-            Import::Single(name) => vec![self.process_single_import(name)],
-            Import::Wildcard(module) => vec![self.process_wildcard_import(module)],
+            Import::Single(name) => Iterating::once(self.process_single_import(name)),
+            Import::Wildcard(module) => Iterating::once(self.process_wildcard_import(module)),
             Import::Multiple { prefix, suffices } => suffices
                 .iter()
                 .map(|suffix| self.process_multiple_import(prefix, suffix))
