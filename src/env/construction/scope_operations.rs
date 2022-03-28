@@ -100,6 +100,11 @@ impl<'ast, 'a, 'env> ScopeGenerator<'ast, 'a, 'env> {
             Expression::FieldAccess { receiver, .. } => {
                 self.generate_for_expression(receiver, scope_id);
             }
+            Expression::Collection(elements) => {
+                for element in elements {
+                    self.generate_for_expression(element, scope_id)
+                }
+            }
         }
     }
 
@@ -128,7 +133,7 @@ impl<'ast, 'a, 'env> ScopeGenerator<'ast, 'a, 'env> {
         scope_id: ScopeId,
     ) {
         for field in r#struct.fields.iter_mut() {
-            field.field_type.0.set_scope(scope_id);
+            field.field_type.name.set_scope(scope_id);
             if let Some(default_value) = field.default_value.as_mut() {
                 // field default value is not in the body scope
                 self.generate_for_expression(default_value, scope_id);
@@ -149,7 +154,7 @@ impl<'ast, 'a, 'env> ScopeGenerator<'ast, 'a, 'env> {
         scope_id: ScopeId,
     ) {
         for required_field in &mut r#trait.required {
-            required_field.field_type.0.set_scope(scope_id)
+            required_field.field_type.name.set_scope(scope_id)
         }
     }
 }

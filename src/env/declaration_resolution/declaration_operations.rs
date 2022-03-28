@@ -119,6 +119,9 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
             Expression::FieldAccess { receiver, .. } => {
                 self.add_expression(receiver, scope_id, seen_names);
             }
+            Expression::Collection(elements) => elements
+                .iter()
+                .for_each(|element| self.add_expression(element, scope_id, seen_names)),
         }
     }
 
@@ -170,7 +173,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
             r#struct.name
         );
         for field in &r#struct.fields {
-            seen_names.type_names.insert(&field.field_type.0);
+            seen_names.type_names.insert(&field.field_type.name);
             if let Some(default_value) = &field.default_value {
                 self.add_expression(default_value, scope_id, seen_names);
             }
@@ -205,7 +208,7 @@ impl<'ast, 'a, 'env> DeclarationAdder<'ast, 'a, 'env> {
             r#trait.name
         );
         for required in &r#trait.required {
-            seen_names.type_names.insert(&required.field_type.0);
+            seen_names.type_names.insert(&required.field_type.name);
         }
     }
 }

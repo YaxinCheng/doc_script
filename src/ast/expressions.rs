@@ -117,7 +117,17 @@ pub enum Expression<'a> {
     /// ```
     SelfRef(Option<ScopeId>),
     /// Void expression
+    /// # Example
+    /// ```doc_script
+    /// const void = ()
+    /// ```
     Void,
+    /// Collection literal
+    /// # Example
+    /// ```doc_script
+    /// const collection = [1, 2, 3]
+    /// ```
+    Collection(Vec<Expression<'a>>),
 }
 
 impl<'a> From<Node<'a>> for Expression<'a> {
@@ -130,6 +140,7 @@ impl<'a> From<Node<'a>> for Expression<'a> {
             Some(NodeKind::ConstantUse) => Self::const_use(node),
             Some(NodeKind::FieldAccess) => Self::field_access(node),
             Some(NodeKind::VoidExpression) => Expression::Void,
+            Some(NodeKind::CollectionLiteral) => Self::collection_literal(node),
             Some(NodeKind::Expression | NodeKind::ChainableExpression) => {
                 Self::expression_recursive(node)
             }
@@ -163,15 +174,11 @@ impl<'a> Expression<'a> {
         debug_check! { _close_bracket, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "}" })) };
         let (statements, expression) =
             match children.pop().expect("Expect Statements or Expression") {
-                expression
-                @
-                Node::Internal {
+                expression @ Node::Internal {
                     kind: NodeKind::Expression,
                     ..
                 } => (children.pop().expect("Expect Statements"), Some(expression)),
-                statements
-                @
-                Node::Internal {
+                statements @ Node::Internal {
                     kind: NodeKind::Statements,
                     ..
                 } => (statements, None),
@@ -364,5 +371,17 @@ impl<'a> Expression<'a> {
                 field_names: vec![field_name],
             },
         }
+    }
+
+    fn collection_literal(node: Node<'a>) -> Expression<'a> {
+        debug_assert!(matches!(node.kind(), Some(NodeKind::CollectionLiteral)));
+        let elements = BreadthFirst::find(
+            node,
+            |node| matches!(node.kind(), Some(NodeKind::Expression)),
+            |node| node.children().unwrap_or_default(),
+        )
+        .map(Expression::from)
+        .collect::<Vec<Expression>>();
+        Expression::Collection(elements)
     }
 }

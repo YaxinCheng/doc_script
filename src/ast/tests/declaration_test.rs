@@ -22,12 +22,18 @@ struct Square(
         fields: vec![
             Field {
                 name: "width",
-                field_type: Type(Name::simple("Int")),
+                field_type: Type {
+                    name: Name::simple("Int"),
+                    is_collection: false,
+                },
                 default_value: None,
             },
             Field {
                 name: "content",
-                field_type: Type(Name::simple("String")),
+                field_type: Type {
+                    name: Name::simple("String"),
+                    is_collection: false,
+                },
                 default_value: Some(Expression::Literal {
                     kind: LiteralKind::String,
                     lexeme: r#""""#,
@@ -59,12 +65,18 @@ struct Square(
         fields: vec![
             Field {
                 name: "width",
-                field_type: Type(Name::simple("Int")),
+                field_type: Type {
+                    name: Name::simple("Int"),
+                    is_collection: false,
+                },
                 default_value: None,
             },
             Field {
                 name: "content",
-                field_type: Type(Name::simple("String")),
+                field_type: Type {
+                    name: Name::simple("String"),
+                    is_collection: false,
+                },
                 default_value: Some(Expression::Literal {
                     kind: LiteralKind::String,
                     lexeme: r#""""#,
@@ -92,17 +104,26 @@ struct Square(
         fields: vec![
             Field {
                 name: "width",
-                field_type: Type(Name::simple("Int")),
+                field_type: Type {
+                    name: Name::simple("Int"),
+                    is_collection: false,
+                },
                 default_value: None,
             },
             Field {
                 name: "height",
-                field_type: Type(Name::simple("Int")),
+                field_type: Type {
+                    name: Name::simple("Int"),
+                    is_collection: false,
+                },
                 default_value: None,
             },
             Field {
                 name: "content",
-                field_type: Type(Name::simple("String")),
+                field_type: Type {
+                    name: Name::simple("String"),
+                    is_collection: false,
+                },
                 default_value: Some(Expression::Literal {
                     kind: LiteralKind::String,
                     lexeme: r#""""#,
@@ -110,7 +131,10 @@ struct Square(
             },
             Field {
                 name: "id",
-                field_type: Type(Name::simple("Int")),
+                field_type: Type {
+                    name: Name::simple("Int"),
+                    is_collection: false,
+                },
                 default_value: Some(Expression::Literal {
                     kind: LiteralKind::Integer,
                     lexeme: r#"0"#,
@@ -173,6 +197,51 @@ struct Square
     assert_eq!(struct_declaration, expected)
 }
 
+#[test]
+fn test_struct_with_collection_field() {
+    let program = r#"
+    struct IntArray(elements: [Int])
+    "#;
+    let struct_declaration = get_struct(program);
+    let expected = Declaration::Struct(StructDeclaration {
+        name: "IntArray",
+        fields: vec![Field {
+            name: "elements",
+            field_type: Type {
+                name: Name::simple("Int"),
+                is_collection: true,
+            },
+            default_value: None,
+        }],
+        body: None,
+    });
+    assert_eq!(struct_declaration, expected)
+}
+
+#[test]
+fn test_struct_with_collection_field_with_default_value() {
+    let program = r#"
+    struct IntArray(elements: [Int] = [1,])
+    "#;
+    let struct_declaration = get_struct(program);
+    let expected = Declaration::Struct(StructDeclaration {
+        name: "IntArray",
+        fields: vec![Field {
+            name: "elements",
+            field_type: Type {
+                name: Name::simple("Int"),
+                is_collection: true,
+            },
+            default_value: Some(Expression::Collection(vec![Expression::Literal {
+                kind: LiteralKind::Integer,
+                lexeme: "1",
+            }])),
+        }],
+        body: None,
+    });
+    assert_eq!(struct_declaration, expected)
+}
+
 fn get_struct(program: &str) -> Declaration {
     let parse_tree = parse(tokenize(program));
     DepthFirst::find(
@@ -216,12 +285,18 @@ fn test_trait_declaration_fields() {
         required: vec![
             Field {
                 name: "first",
-                field_type: Type(Name::simple("Int")),
+                field_type: Type {
+                    name: Name::simple("Int"),
+                    is_collection: false,
+                },
                 default_value: None,
             },
             Field {
                 name: "second",
-                field_type: Type(Name::simple("String")),
+                field_type: Type {
+                    name: Name::simple("String"),
+                    is_collection: false,
+                },
                 default_value: None,
             },
         ],

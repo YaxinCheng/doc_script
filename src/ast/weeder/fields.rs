@@ -16,7 +16,10 @@ mod fields_weeder_tests {
     use crate::ast::{Field, Name, Type};
 
     fn field_type() -> Type<'static> {
-        Type(Name::simple("type"))
+        Type {
+            name: Name::simple("type"),
+            is_collection: false,
+        }
     }
 
     #[test]

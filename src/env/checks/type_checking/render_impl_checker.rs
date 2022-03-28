@@ -38,7 +38,7 @@ mod essential_trait_checker_tests {
     #[test]
     fn test_is_not_essential_trait() {
         let env = Environment::builder().build();
-        assert!(!RenderImplChecker(&env).is_in_essential(&Types::Int));
+        assert!(!RenderImplChecker(&env).is_in_essential(&Types::INT));
     }
 
     #[test]

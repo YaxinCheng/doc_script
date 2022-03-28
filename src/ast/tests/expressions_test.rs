@@ -362,6 +362,43 @@ fn test_void_expression() {
     assert_eq!(actual, expected)
 }
 
+#[test]
+fn test_collection_literal() {
+    let actual = find_first_expression("const a = [1, 2, 3]\n").expect("Expect Expression");
+    let expected = Expression::Collection(vec![
+        Expression::Literal {
+            kind: LiteralKind::Integer,
+            lexeme: "1",
+        },
+        Expression::Literal {
+            kind: LiteralKind::Integer,
+            lexeme: "2",
+        },
+        Expression::Literal {
+            kind: LiteralKind::Integer,
+            lexeme: "3",
+        },
+    ]);
+    assert_eq!(actual, expected)
+}
+
+#[test]
+fn test_collection_literal_with_ending_comma() {
+    let actual = find_first_expression("const a = [1,]\n").expect("Expect Expression");
+    let expected = Expression::Collection(vec![Expression::Literal {
+        kind: LiteralKind::Integer,
+        lexeme: "1",
+    }]);
+    assert_eq!(actual, expected)
+}
+
+#[test]
+fn test_empty_collection_literal() {
+    let actual = find_first_expression("const a = []\n").expect("Expect Expression");
+    let expected = Expression::Collection(vec![]);
+    assert_eq!(actual, expected)
+}
+
 fn find_first_expression(program: &str) -> Option<Expression> {
     let parse_tree = parse(tokenize(program));
     BreadthFirst::find(

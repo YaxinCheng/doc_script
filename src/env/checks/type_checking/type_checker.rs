@@ -75,7 +75,7 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
             return *resolved_type;
         }
         let resolve_type = match expression {
-            Expression::Void => Types::Void,
+            Expression::Void => Types::VOID,
             Expression::ConstUse(name) => self.resolve_from_constant_use_name(name),
             Expression::SelfRef(scope_id) => {
                 self.resolve_self(scope_id.expect("self scope not set"))
@@ -95,6 +95,7 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
                 receiver,
                 field_names,
             } => self.resolve_field_access(receiver, field_names),
+            Expression::Collection(elements) => self.resolve_collection_literal(elements),
         };
         let existing = self.resolved_expressions.insert(expression, resolve_type);
         debug_assert!(existing.is_none(), "Expression resolved twice");
@@ -166,7 +167,7 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
             .iter()
             .map(|statement| self.resolve_statement(statement))
             .last()
-            .unwrap_or(Types::Void)
+            .unwrap_or(Types::VOID)
     }
 
     fn resolve_struct_init(
@@ -175,7 +176,7 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
         parameters: &'ast [Parameter<'a>],
         init_content: &'ast Option<StructInitContent<'a>>,
     ) -> Types<'ast, 'a> {
-        let struct_type = type_resolver::resolve_type_name(self.environment, name)
+        let struct_type = type_resolver::resolve_type_name(self.environment, name, false)
             .unwrap_or_else(|| panic!("type name `{}` not linked", name));
         let fields = struct_type.fields();
         let field_types = fields
@@ -208,7 +209,11 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
 
     fn check_can_have_init_content(&mut self, field_type: Option<&Types>) -> Result<()> {
         match field_type {
-            Some(Types::Children) => Ok(()),
+            Some(Types::TraitCollection(r#trait))
+                if essential_trait::is_render(self.environment, *r#trait) =>
+            {
+                Ok(())
+            }
             None => Err(Error::NotExpectingChildren),
             _ => Err(Error::LastFieldIsNotChildren),
         }
@@ -261,7 +266,7 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
     fn resolve_statement(&mut self, statement: &'ast Statement<'a>) -> Types<'ast, 'a> {
         match statement {
             Statement::Expression(expression) => self.resolve_expression(expression),
-            _ => Types::Void,
+            _ => Types::VOID,
         }
     }
 
@@ -286,8 +291,12 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
         if let Some(resolved_type) = self.resolved_fields.get(&field) {
             return *resolved_type;
         }
-        let expected_type = type_resolver::resolve_type_name(self.environment, &field.field_type.0)
-            .unwrap_or_else(|| panic!("Field type `{}` is invalid", field.field_type.0));
+        let expected_type = type_resolver::resolve_type_name(
+            self.environment,
+            &field.field_type.name,
+            field.field_type.is_collection,
+        )
+        .unwrap_or_else(|| panic!("Field type `{}` is invalid", field.field_type.name));
         if let Some(default_value) = &field.default_value {
             let value_type = self.resolve_expression(default_value);
             if !AssignableChecker(self).check(&value_type, &expected_type) {
@@ -321,6 +330,20 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
             };
         }
         last_type
+    }
+
+    fn resolve_collection_literal(&mut self, elements: &'ast [Expression<'a>]) -> Types<'ast, 'a> {
+        if elements.is_empty() {
+            return Types::VOID;
+        }
+        let mut element_type = elements
+            .iter()
+            .map(|element| self.resolve_expression(element));
+        let expected_type = element_type.next().expect("At least one element");
+        if let Some(unmatched_type) = element_type.find(|element| element != &expected_type) {
+            panic!("Collection literal expects type {expected_type}, but found {unmatched_type}")
+        }
+        expected_type.collection_type()
     }
 }
 

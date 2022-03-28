@@ -49,12 +49,16 @@ impl<'ast, 'a, 'env> StructHierarchyChecker<'ast, 'a, 'env> {
             Ok(())
         } else {
             for field in &declaration.fields {
-                match type_resolver::resolve_type_name(self.environment, &field.field_type.0) {
+                match type_resolver::resolve_type_name(
+                    self.environment,
+                    &field.field_type.name,
+                    field.field_type.is_collection,
+                ) {
                     Some(Types::Struct(struct_declaration)) => {
                         self.recursively_check(struct_declaration, white_list)?;
                     }
                     Some(_primitive_types) => (),
-                    None => panic!("Name `{}` cannot be resolved", field.field_type.0),
+                    None => panic!("Name `{}` cannot be resolved", field.field_type.name),
                 }
             }
             self.declaring.remove(&declaration);

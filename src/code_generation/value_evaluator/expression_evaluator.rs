@@ -61,6 +61,9 @@ impl<'ast, 'a, 'env> ExpressionEvaluator<'ast, 'a, 'env> {
             } => self.evaluate_chaining_methods(receiver, accessors, self_ref),
             Expression::Block(block) => self.evaluate_block(block, self_ref),
             Expression::SelfRef(_) => Self::evaluate_self(self_ref),
+            Expression::Collection(elements) => {
+                self.evaluate_collection_literal(elements, self_ref)
+            }
         }
     }
 
@@ -166,5 +169,17 @@ impl<'ast, 'a, 'env> ExpressionEvaluator<'ast, 'a, 'env> {
         self_ref
             .clone()
             .expect("self does not exist in current scope")
+    }
+
+    fn evaluate_collection_literal(
+        &mut self,
+        elements: &'ast [Expression<'a>],
+        self_ref: Option<Value<'ast, 'a>>,
+    ) -> Value<'ast, 'a> {
+        let elements = elements
+            .iter()
+            .map(|element| self.evaluate(element, self_ref.clone()))
+            .collect::<Vec<_>>();
+        Value::Array(elements)
     }
 }

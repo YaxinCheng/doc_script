@@ -11,27 +11,27 @@ use crate::tokenizer::{tokenize, LiteralKind};
 
 #[test]
 fn test_int() {
-    test_literals(LiteralKind::Integer, Types::Int)
+    test_literals(LiteralKind::Integer, Types::INT)
 }
 
 #[test]
 fn test_binary() {
-    test_literals(LiteralKind::Binary, Types::Int)
+    test_literals(LiteralKind::Binary, Types::INT)
 }
 
 #[test]
 fn test_float() {
-    test_literals(LiteralKind::Floating, Types::Float)
+    test_literals(LiteralKind::Floating, Types::FLOAT)
 }
 
 #[test]
 fn test_string() {
-    test_literals(LiteralKind::String, Types::String)
+    test_literals(LiteralKind::String, Types::STRING)
 }
 
 #[test]
 fn test_bool() {
-    test_literals(LiteralKind::Boolean, Types::Bool)
+    test_literals(LiteralKind::Boolean, Types::BOOL)
 }
 
 fn test_literals(kind: LiteralKind, expected: Types) {
@@ -118,7 +118,7 @@ fn test_resolve_from_block() {
         )
     );
     let actual = TypeChecker::with_environment(&env).test_resolve_expression(target_block);
-    let expected = Types::Int;
+    let expected = Types::INT;
     assert_eq!(actual, expected)
 }
 
@@ -158,7 +158,7 @@ fn test_resolve_field_access_from_block() {
         )
     );
     let actual = TypeChecker::with_environment(&env).test_resolve_expression(target_block);
-    let expected = Types::String;
+    let expected = Types::STRING;
     assert_eq!(actual, expected)
 }
 
@@ -273,7 +273,7 @@ fn test_type_access_internal(program: &str) {
 
     let actual =
         TypeChecker::with_environment(&env).test_resolve_expression(&target_constant.value);
-    let expected = Types::String;
+    let expected = Types::STRING;
     assert_eq!(actual, expected)
 }
 
@@ -344,7 +344,7 @@ fn test_void() {
     let void_expr = Expression::Void;
     let env = Environment::default();
     let actual = TypeChecker::with_environment(&env).test_resolve_expression(&void_expr);
-    assert_eq!(actual, Types::Void)
+    assert_eq!(actual, Types::VOID)
 }
 
 #[test]
@@ -379,7 +379,7 @@ fn test_void_type_in_const(program: &str) {
     );
     let actual =
         TypeChecker::with_environment(&env).test_resolve_expression(&target_constant.value);
-    let expected = Types::Void;
+    let expected = Types::VOID;
     assert_eq!(actual, expected)
 }
 
@@ -405,6 +405,48 @@ fn test_void_type_impl_trait() {
     ];
     let module_paths = [vec![], vec![], vec![], vec![]];
     let _env = Environment::builder()
+        .add_modules(&module_paths)
+        .generate_scopes(&mut syntax_trees)
+        .resolve_names(&syntax_trees)
+        .validate(&syntax_trees)
+        .build();
+}
+
+#[test]
+#[should_panic]
+fn test_collection_with_different_types() {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
+    let mut syntax_trees = [abstract_tree(parse(tokenize(
+        "const arr = [1, true, ()]\n",
+    )))];
+    let module_paths = [vec![]];
+    Environment::builder()
+        .add_modules(&module_paths)
+        .generate_scopes(&mut syntax_trees)
+        .resolve_names(&syntax_trees)
+        .validate(&syntax_trees)
+        .build();
+}
+
+#[test]
+fn test_assign_empty_collection_to_multiple_collections() {
+    let formula = FormulaSuppress::all();
+    formula.suppress();
+
+    let mut syntax_trees = [abstract_tree(parse(tokenize(
+        r#"
+    struct IntArray(elements: [Int])
+    struct Text;
+    struct TextArray(elements: [Text])
+    const empty = []
+    const int_array = IntArray(empty)
+    const text_array = TextArray(empty)
+    "#,
+    )))];
+    let module_paths = [vec![]];
+    Environment::builder()
         .add_modules(&module_paths)
         .generate_scopes(&mut syntax_trees)
         .resolve_names(&syntax_trees)

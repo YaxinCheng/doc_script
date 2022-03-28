@@ -1,3 +1,4 @@
+use crate::ast::TraitDeclaration;
 use crate::env::checks::type_checking::types::Types;
 use crate::env::scope::DeclaredElement;
 use crate::env::Environment;
@@ -5,13 +6,20 @@ use crate::env::Environment;
 const STD_ESSENTIAL: &[&str] = &["std", "essential"];
 
 pub fn render<'ast, 'a>(environment: &Environment<'ast, 'a>) -> Types<'ast, 'a> {
-    essential_trait(environment, "Render").expect("Render cannot be found")
+    essential_trait(environment, "Render")
+        .map(Types::Trait)
+        .expect("Render cannot be found")
+}
+
+pub fn is_render<'ast, 'a>(environment: &Environment<'ast, 'a>, target: &TraitDeclaration) -> bool {
+    let render_trait = essential_trait(environment, "Render").expect("Render cannot be found");
+    std::ptr::eq(render_trait, target)
 }
 
 fn essential_trait<'ast, 'a>(
     environment: &Environment<'ast, 'a>,
     name: &'static str,
-) -> Option<Types<'ast, 'a>> {
+) -> Option<&'ast TraitDeclaration<'a>> {
     let std_essential = environment
         .find_module(STD_ESSENTIAL)
         .map(|scope_id| environment.get_scope(scope_id))?;
@@ -20,7 +28,7 @@ fn essential_trait<'ast, 'a>(
         .declared
         .get(name)
         .map(|declared| match declared {
-            DeclaredElement::Trait(r#trait) => Types::Trait(*r#trait),
+            DeclaredElement::Trait(r#trait) => *r#trait,
             _ => panic!("{name} is not declared as a trait"),
         })
 }

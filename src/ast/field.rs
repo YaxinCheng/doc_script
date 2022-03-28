@@ -72,12 +72,28 @@ impl<'a> Field<'a> {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct Type<'a>(pub Name<'a>);
+pub struct Type<'a> {
+    pub name: Name<'a>,
+    pub is_collection: bool,
+}
 
 impl<'a> From<Node<'a>> for Type<'a> {
     fn from(node: Node<'a>) -> Self {
         let mut children = check_unpack!(node, NodeKind::Type);
+        let is_collection = children.len() > 1;
+        if is_collection {
+            let _close_bracket = children.pop();
+            debug_check! { _close_bracket, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "]" })) };
+        }
         let name = children.pop().map(Name::from).expect("Expect Name");
-        Type(name)
+        #[cfg(debug_assertions)]
+        if is_collection {
+            let _open_bracket = children.pop();
+            debug_check! { _open_bracket, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "[" })) };
+        }
+        Type {
+            name,
+            is_collection,
+        }
     }
 }

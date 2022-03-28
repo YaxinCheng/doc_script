@@ -75,8 +75,8 @@ impl<'ast, 'a, 'env, 'checker> StructInitChecker<'ast, 'a, 'env, 'checker> {
                 if !self.assignable_checker.check(parameter_type, field_type) {
                     return Err(Error::TypeMismatch {
                         field: field.name.to_owned(),
-                        expected: format!("{:?}", field_type),
-                        found: format!("{:?}", parameter_type),
+                        expected: format!("{}", field_type),
+                        found: format!("{}", parameter_type),
                     });
                 }
             } else if field.default_value.is_none() {
@@ -107,8 +107,8 @@ impl<'ast, 'a, 'env, 'checker> StructInitChecker<'ast, 'a, 'env, 'checker> {
             } else if field.default_value.is_none() {
                 return Err(Error::TypeMismatch {
                     field: field.name.to_owned(),
-                    expected: format!("{:?}", expected_type),
-                    found: format!("{:?}", &parameter_types[0]),
+                    expected: format!("{}", expected_type),
+                    found: format!("{}", &parameter_types[0]),
                 });
             }
         }
@@ -136,7 +136,10 @@ mod struct_init_checker_tests {
         };
         Field {
             name,
-            field_type: Type(Name::simple("not important")),
+            field_type: Type {
+                name: Name::simple("not important"),
+                is_collection: false,
+            },
             default_value,
         }
     }
@@ -145,8 +148,8 @@ mod struct_init_checker_tests {
     fn test_type_plain_parameters() {
         let check_outcome = check_plain_parameters(
             vec![field("field1", false), field("field2", false)],
-            vec![Types::Int, Types::String],
-            vec![Types::Int, Types::String],
+            vec![Types::INT, Types::STRING],
+            vec![Types::INT, Types::STRING],
         );
         assert!(check_outcome.is_ok())
     }
@@ -155,8 +158,8 @@ mod struct_init_checker_tests {
     fn test_type_plain_mismatches() {
         let check_outcome = check_plain_parameters(
             vec![field("field1", false), field("field2", false)],
-            vec![Types::Int, Types::String],
-            vec![Types::String, Types::Int],
+            vec![Types::INT, Types::STRING],
+            vec![Types::STRING, Types::INT],
         );
         assert_eq!(
             check_outcome,
@@ -172,8 +175,8 @@ mod struct_init_checker_tests {
     fn test_type_plain_with_default_parameter() {
         let check_outcome = check_plain_parameters(
             vec![field("field1", false), field("field2", true)],
-            vec![Types::Int, Types::String],
-            vec![Types::Int],
+            vec![Types::INT, Types::STRING],
+            vec![Types::INT],
         );
         assert!(check_outcome.is_ok())
     }
@@ -182,8 +185,8 @@ mod struct_init_checker_tests {
     fn test_type_plain_modifying_default_parameter() {
         let check_outcome = check_plain_parameters(
             vec![field("field1", true), field("field2", true)],
-            vec![Types::Int, Types::String],
-            vec![Types::Int],
+            vec![Types::INT, Types::STRING],
+            vec![Types::INT],
         );
         assert!(check_outcome.is_ok())
     }
@@ -192,8 +195,8 @@ mod struct_init_checker_tests {
     fn test_type_plain_modifying_second_default_parameter() {
         let check_outcome = check_plain_parameters(
             vec![field("field1", true), field("field2", true)],
-            vec![Types::Int, Types::String],
-            vec![Types::String],
+            vec![Types::INT, Types::STRING],
+            vec![Types::STRING],
         );
         assert!(check_outcome.is_ok())
     }
@@ -206,8 +209,8 @@ mod struct_init_checker_tests {
                 field("field2", true),
                 field("field3", true),
             ],
-            vec![Types::Int, Types::String, Types::Int],
-            vec![Types::Int, Types::Int],
+            vec![Types::INT, Types::STRING, Types::INT],
+            vec![Types::INT, Types::INT],
         );
         assert!(check_outcome.is_ok())
     }
@@ -216,8 +219,8 @@ mod struct_init_checker_tests {
     fn test_type_plain_default_field_not_supplied() {
         let check_outcome = check_plain_parameters(
             vec![field("field1", false), field("field2", true)],
-            vec![Types::Int, Types::String],
-            vec![Types::String],
+            vec![Types::INT, Types::STRING],
+            vec![Types::STRING],
         );
         assert_eq!(
             check_outcome,
@@ -247,9 +250,9 @@ mod struct_init_checker_tests {
     fn test_labelled_parameters_in_order() {
         let check_res = check_labelled_parameters(
             vec![field("field1", false), field("field2", false)],
-            vec![Types::Int, Types::String],
+            vec![Types::INT, Types::STRING],
             vec![parameter("field1"), parameter("field2")],
-            vec![Types::Int, Types::String],
+            vec![Types::INT, Types::STRING],
         );
         assert!(check_res.is_ok())
     }
@@ -258,9 +261,9 @@ mod struct_init_checker_tests {
     fn test_labelled_parameters_in_reverse_order() {
         let check_res = check_labelled_parameters(
             vec![field("field1", false), field("field2", false)],
-            vec![Types::Int, Types::String],
+            vec![Types::INT, Types::STRING],
             vec![parameter("field2"), parameter("field1")],
-            vec![Types::String, Types::Int],
+            vec![Types::STRING, Types::INT],
         );
         assert!(check_res.is_ok())
     }
@@ -273,9 +276,9 @@ mod struct_init_checker_tests {
                 field("field2", true),
                 field("field3", true),
             ],
-            vec![Types::Int, Types::String, Types::Int],
+            vec![Types::INT, Types::STRING, Types::INT],
             vec![parameter("field2"), parameter("field1")],
-            vec![Types::String, Types::Int],
+            vec![Types::STRING, Types::INT],
         );
         assert!(check_res.is_ok())
     }
@@ -288,9 +291,9 @@ mod struct_init_checker_tests {
                 field("field2", true),
                 field("field3", true),
             ],
-            vec![Types::Int, Types::String, Types::Int],
+            vec![Types::INT, Types::STRING, Types::INT],
             vec![parameter("field2"), parameter("field3")],
-            vec![Types::String, Types::Int],
+            vec![Types::STRING, Types::INT],
         );
         assert_eq!(check_res, Err(Error::FieldNotSupplied("field1".into())))
     }
@@ -299,9 +302,9 @@ mod struct_init_checker_tests {
     fn test_labelled_parameters_type_mismatches() {
         let check_res = check_labelled_parameters(
             vec![field("field1", false), field("field2", false)],
-            vec![Types::Int, Types::String],
+            vec![Types::INT, Types::STRING],
             vec![parameter("field1"), parameter("field2")],
-            vec![Types::String, Types::String],
+            vec![Types::STRING, Types::STRING],
         );
         assert_eq!(
             check_res,
@@ -325,9 +328,9 @@ mod struct_init_checker_tests {
         }
         .check_parameters(
             &parameters,
-            vec![Types::Int, Types::String],
+            vec![Types::INT, Types::STRING],
             &fields,
-            &[Types::Int],
+            &[Types::INT],
         );
         assert_eq!(
             check_res,
@@ -348,12 +351,7 @@ mod struct_init_checker_tests {
         let check_res = StructInitChecker {
             assignable_checker: type_conform_checker,
         }
-        .check_parameters(
-            &parameters,
-            vec![],
-            &fields,
-            &[Types::Int, Types::String],
-        );
+        .check_parameters(&parameters, vec![], &fields, &[Types::INT, Types::STRING]);
         assert_eq!(check_res, Err(Error::FieldNotSupplied("field1".into())))
     }
 

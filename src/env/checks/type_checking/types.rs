@@ -4,36 +4,53 @@ use std::fmt::{Display, Formatter};
 
 #[derive(Copy, Clone, Debug, Eq)]
 pub enum Types<'ast, 'a> {
+    Primitive(Primitive),
+    Struct(&'ast StructDeclaration<'a>),
+    Trait(&'ast TraitDeclaration<'a>),
+
+    PrimitiveCollection(Primitive),
+    StructCollection(&'ast StructDeclaration<'a>),
+    TraitCollection(&'ast TraitDeclaration<'a>),
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum Primitive {
     Void,
     Int,
     Float,
     Bool,
     String,
-    Children,
-    Struct(&'ast StructDeclaration<'a>),
-    Trait(&'ast TraitDeclaration<'a>),
 }
 
 impl<'ast, 'a> PartialEq for Types<'ast, 'a> {
     fn eq(&self, other: &Self) -> bool {
         use Types::*;
         match (self, other) {
-            (Int, Int)
-            | (Float, Float)
-            | (Void, Void)
-            | (Bool, Bool)
-            | (String, String)
-            | (Children, Children) => true,
-            (Struct(self_struct), Struct(other_struct)) => {
+            (Types::Primitive(self_primitive), Types::Primitive(other_primitive))
+            | (
+                Types::PrimitiveCollection(self_primitive),
+                Types::PrimitiveCollection(other_primitive),
+            ) => self_primitive == other_primitive,
+            (Struct(self_struct), Struct(other_struct))
+            | (StructCollection(self_struct), StructCollection(other_struct)) => {
                 std::ptr::eq(*self_struct, *other_struct)
             }
-            (Trait(self_trait), Trait(other_trait)) => std::ptr::eq(*self_trait, *other_trait),
+            (Trait(self_trait), Trait(other_trait))
+            | (TraitCollection(self_trait), TraitCollection(other_trait)) => {
+                std::ptr::eq(*self_trait, *other_trait)
+            }
             _ => false,
         }
     }
 }
 
 impl<'ast, 'a> Types<'ast, 'a> {
+    pub const STRING: Self = Types::Primitive(Primitive::String);
+    pub const VOID: Self = Types::Primitive(Primitive::Void);
+    pub const INT: Self = Types::Primitive(Primitive::Int);
+    pub const FLOAT: Self = Types::Primitive(Primitive::Float);
+    pub const BOOL: Self = Types::Primitive(Primitive::Bool);
+
     pub fn access(&self, name: &str) -> Option<TypedElement<'ast, 'a>> {
         self.field(name)
             .map(TypedElement::Field)
@@ -68,23 +85,34 @@ impl<'ast, 'a> Types<'ast, 'a> {
             _ => &[],
         }
     }
-
-    pub fn name(&self) -> &str {
-        match self {
-            Self::Trait(r#trait) => r#trait.name,
-            Self::Struct(r#struct) => r#struct.name,
-            Self::Children => "Children",
-            Self::Int => "Int",
-            Self::String => "String",
-            Self::Void => "Void",
-            Self::Float => "Float",
-            Self::Bool => "Bool",
-        }
-    }
 }
 
 impl<'ast, 'a> Display for Types<'ast, 'a> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.name())
+        match self {
+            Self::Trait(r#trait) => write!(f, "{}", r#trait.name),
+            Self::Struct(r#struct) => write!(f, "{}", r#struct.name),
+            Self::Primitive(primitive) => write!(f, "{:?}", primitive),
+
+            Self::TraitCollection(r#trait) => write!(f, "[{}]", r#trait.name),
+            Self::StructCollection(r#struct) => write!(f, "[{}]", r#struct.name),
+            Self::PrimitiveCollection(primitive) => write!(f, "[{:?}]", primitive),
+        }
+    }
+}
+
+// Array related
+impl<'ast, 'a> Types<'ast, 'a> {
+    pub fn collection_type(self) -> Self {
+        debug_assert!(matches!(
+            self,
+            Self::Primitive(_) | Self::Struct(_) | Self::Trait(_)
+        ));
+        match self {
+            Self::Primitive(primitive) => Self::PrimitiveCollection(primitive),
+            Self::Struct(r#struct) => Self::StructCollection(r#struct),
+            Self::Trait(r#trait) => Self::TraitCollection(r#trait),
+            _ => unreachable!("Type is already collection type"),
+        }
     }
 }

@@ -1,6 +1,6 @@
 use super::type_resolver;
 use crate::env::checks::type_checking::render_impl_checker::RenderImplChecker;
-use crate::env::checks::type_checking::types::Types;
+use crate::env::checks::type_checking::types::{Primitive, Types};
 use crate::env::checks::type_checking::TypeChecker;
 use crate::env::TypedElement;
 
@@ -18,12 +18,19 @@ impl<'ast, 'a, 'env, 'checker> AssignableChecker<'ast, 'a, 'env, 'checker> {
     /// then fields with target type can hold values with source type
     pub fn check(&mut self, source: &Types<'ast, 'a>, target: &Types<'ast, 'a>) -> bool {
         source == target
-            || match target {
-                r#trait @ Types::Trait(_) => self.conforms_to_trait(source, r#trait),
-                Types::Children => matches!(source, Types::Void),
-                _ => false,
-            }
+            || Self::empty_assignability(source, target)
+            || (matches!(target, Types::Trait(_)) && self.conforms_to_trait(source, target))
             || RenderImplChecker(self.0.environment).check(source, target)
+    }
+
+    fn empty_assignability(source: &Types<'ast, 'a>, target: &Types<'ast, 'a>) -> bool {
+        matches!(source, Types::Primitive(Primitive::Void))
+            && matches!(
+                target,
+                Types::PrimitiveCollection(_)
+                    | Types::StructCollection(_)
+                    | Types::TraitCollection(_)
+            )
     }
 
     /// To make a type conforms to a trait,
@@ -39,13 +46,17 @@ impl<'ast, 'a, 'env, 'checker> AssignableChecker<'ast, 'a, 'env, 'checker> {
     ) -> bool {
         for field in trait_type.fields() {
             if let Some(typed_element) = source_type.access(field.name) {
-                let expected_type =
-                    type_resolver::resolve_type_name(self.0.environment, &field.field_type.0)
-                        .expect("Expected trait field type not found");
+                let expected_type = type_resolver::resolve_type_name(
+                    self.0.environment,
+                    &field.field_type.name,
+                    field.field_type.is_collection,
+                )
+                .expect("Expected trait field type not found");
                 let found_type = match typed_element {
                     TypedElement::Field(found_field) => type_resolver::resolve_type_name(
                         self.0.environment,
-                        &found_field.field_type.0,
+                        &found_field.field_type.name,
+                        found_field.field_type.is_collection,
                     )
                     .expect("Failed to find type for field"),
                     TypedElement::Constant(constant) => self.0.resolve_expression(&constant.value),
@@ -83,7 +94,7 @@ mod type_conform_checker_tests {
         let env = Environment::default();
         let mut type_checker = type_checker(&env);
         let mut conform_checker = AssignableChecker(&mut type_checker);
-        assert!(conform_checker.check(&Types::Int, &Types::Int))
+        assert!(conform_checker.check(&Types::INT, &Types::INT))
     }
 
     #[test]
@@ -211,11 +222,11 @@ mod type_conform_checker_tests {
         let mut conform_checker = AssignableChecker(&mut type_checker);
         let trait_type = Types::Trait(first_declaration(&syntax_trees[0]).as_trait().unwrap());
         for source_type in [
-            Types::Int,
-            Types::Float,
-            Types::String,
-            Types::Void,
-            Types::Bool,
+            Types::INT,
+            Types::FLOAT,
+            Types::STRING,
+            Types::VOID,
+            Types::BOOL,
             trait_type,
         ] {
             assert!(conform_checker.check(&source_type, &trait_type))
@@ -260,6 +271,53 @@ mod type_conform_checker_tests {
         )))];
         let module_paths = [vec![]];
         let _env = Environment::builder()
+            .add_modules(&module_paths)
+            .generate_scopes(&mut syntax_trees)
+            .resolve_names(&syntax_trees)
+            .validate(&syntax_trees)
+            .build();
+    }
+
+    #[test]
+    fn test_int_collection_assignability() {
+        test_collection_assignability(
+            r#"
+        struct IntArray(elements: [Int])
+        
+        const arr = IntArray([1, 2, 3])
+        "#,
+        )
+    }
+
+    #[test]
+    fn test_assign_empty_collection() {
+        test_collection_assignability(
+            r#"
+        struct IntArray(elements: [Int])
+        
+        const arr = []
+        "#,
+        )
+    }
+
+    #[test]
+    fn test_assign_void_to_collection() {
+        test_collection_assignability(
+            r#"
+        struct IntArray(elements: [Int])
+        
+        const arr = ()
+        "#,
+        )
+    }
+
+    fn test_collection_assignability(program: &str) {
+        let checkers = FormulaSuppress::all();
+        checkers.suppress();
+
+        let mut syntax_trees = [abstract_tree(parse(tokenize(program)))];
+        let module_paths = [vec![]];
+        Environment::builder()
             .add_modules(&module_paths)
             .generate_scopes(&mut syntax_trees)
             .resolve_names(&syntax_trees)

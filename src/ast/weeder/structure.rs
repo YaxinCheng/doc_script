@@ -34,7 +34,10 @@ mod struct_weeder_tests {
     fn field(name: &str) -> Field {
         Field {
             name,
-            field_type: Type(Name::simple("type")),
+            field_type: Type {
+                name: Name::simple("type"),
+                is_collection: false,
+            },
             default_value: None,
         }
     }

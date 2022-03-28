@@ -38,7 +38,7 @@ fn test_init_content_not_expected() {
 #[test]
 #[should_panic]
 fn test_init_content_not_render() {
-    let mut syntax_trees = get_syntax_trees([r#"struct A(children: Children)
+    let mut syntax_trees = get_syntax_trees([r#"struct A(children: [Render])
     const a = A {
         3
     }
@@ -57,7 +57,7 @@ fn test_init_last_field_not_children() {
     let checkers = FormulaSuppress::allow_prelude_std();
     checkers.suppress();
 
-    let mut syntax_trees = get_syntax_trees([r#"struct A(children: Children, value: Int)
+    let mut syntax_trees = get_syntax_trees([r#"struct A(children: [Render], value: Int)
     const a = A {
         Page()
     }
@@ -75,7 +75,7 @@ fn test_init_content() {
     let checkers = FormulaSuppress::allow_prelude_std();
     checkers.suppress();
 
-    let mut syntax_trees = get_syntax_trees([r#"struct A(children: Children)
+    let mut syntax_trees = get_syntax_trees([r#"struct A(children: [Render])
     const a = A {
         Page()
     }
@@ -93,7 +93,7 @@ fn test_init_with_parameters() {
     let checkers = FormulaSuppress::allow_prelude_std();
     checkers.suppress();
 
-    let mut syntax_trees = get_syntax_trees([r#"struct A(value: Int, children: Children)
+    let mut syntax_trees = get_syntax_trees([r#"struct A(value: Int, children: [Render])
     const a = A(3) {
         Page()
     }
@@ -111,8 +111,8 @@ fn test_assign_children_to_children() {
     let checkers = FormulaSuppress::allow_prelude_std();
     checkers.suppress();
 
-    let mut syntax_trees = get_syntax_trees([r#"struct A(children: Children)
-    struct B(children: Children) {
+    let mut syntax_trees = get_syntax_trees([r#"struct A(children: [Render])
+    struct B(children: [Render]) {
         const a = A(self.children)
     }
     const b = B {
@@ -129,10 +129,10 @@ fn test_assign_children_to_children() {
 
 #[test]
 fn test_empty_children() {
-    let checkers = FormulaSuppress::all();
+    let checkers = FormulaSuppress::allow_prelude_std();
     checkers.suppress();
 
-    let mut syntax_trees = get_syntax_trees([r#"struct A(children: Children = ())
+    let mut syntax_trees = get_syntax_trees([r#"struct A(children: [Render] = [])
     const a = A()
     "#]);
     let module_paths = get_modules([vec![]]);

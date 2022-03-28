@@ -45,7 +45,7 @@ fn test_doc_wrapped_element() -> Result<()> {
 fn test_wrapped_container() -> Result<()> {
     let compiled = compile_single_file(
         r#"
-    struct WrappedDoc(children: Children) {
+    struct WrappedDoc(children: [Render]) {
         const rendered = Doc(self.children)
     }
     
