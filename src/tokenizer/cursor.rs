@@ -15,9 +15,9 @@ impl<I: Iterator> Cursor<I> {
 }
 
 impl<I> Cursor<I>
-    where
-        I: Iterator + Clone,
-        I::Item: Copy,
+where
+    I: Iterator + Clone,
+    I::Item: Copy,
 {
     pub fn first(&self) -> Option<I::Item> {
         self.nth(0)
@@ -65,7 +65,7 @@ mod cursor_tests {
     fn test_eat_while_finish(text: String) -> bool {
         let mut cursor = Cursor::from_iter(text.chars());
         let length = cursor.eat_while(|c| c != '"');
-        let expected = text.find('"').unwrap_or_else(|| text.len());
+        let expected = text.find('"').unwrap_or(text.len());
         length == expected
     }
 

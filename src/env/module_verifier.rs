@@ -22,7 +22,7 @@ impl<'env, 'ast, 'a> ModuleVerifier<'env, 'ast, 'a> {
     fn is_in_module(&self, declared: DeclaredElement<'ast, 'a>, module_name: &[&str]) -> bool {
         let name = declared.name();
         self.0
-            .find_module(&module_name)
+            .find_module(module_name)
             .map(|scope_id| self.0.get_scope(scope_id))
             .and_then(|scope| scope.name_spaces.declared.get(name))
             .map(|found| found == &declared)

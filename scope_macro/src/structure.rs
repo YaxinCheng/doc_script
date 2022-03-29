@@ -6,7 +6,7 @@ pub(crate) fn implement(input: DeriveInput) -> TokenStream {
     let name = &input.ident;
     let generics = &input.generics;
     field_assert(&input.data);
-    return quote! {
+    quote! {
         impl #generics Scoped for #name #generics {
             fn scope(&self) -> ScopeId {
                 self.scope.expect("Scope id is not set")
@@ -17,7 +17,7 @@ pub(crate) fn implement(input: DeriveInput) -> TokenStream {
             }
         }
     }
-    .into();
+    .into()
 }
 
 fn field_assert(data: &Data) {

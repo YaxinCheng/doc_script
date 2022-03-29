@@ -31,11 +31,11 @@ const VOID = () // void constant
 
 You may have noticed, type annotation is not part of the constant declarations. That is because DocScript uses type induction to detect the type from values directly. However, this does not mean type is insignificant in DocScript.
 
-Types in DocScript are served as constraints to help formatting the documents, also it increases the readability and help writers maintain their scripts.
+Types in DocScript are served as constraints to help format the documents, also it increases the readability and help writers maintain their scripts.
 
 Similar to other languages, DocScript provides a list of primitive types: `String`, `Int`, `Float`, `Bool`, and `Void`, that can be used out of the box. Also, writers can define their own types, such as structs or traits, to help them model their document. 
 
-There will be a more detailed discussion about types in DocScript in later sections, but for now, just remember types are not part of constant declarations but they still exist.
+There will be a more detailed discussion about types in DocScript in later sections, but for now, just remember types are not part of constant declarations, but they still exist.
 
  ## Struct
 
@@ -120,7 +120,7 @@ The `self` is a way of accessing the data itself from inside. It also uses dot t
 
 ## Trait
 
-Trait is a way to limit or abstract a type as a type with certain features. It was introduced to introduce duck type system into DocScript. Like `interface` in Java or `trait` in Rust, trait in DocScript is a kinda of bound or a restriction to say: "This is a type with following values".
+Trait is a way to limit or abstract a type as a type with certain features. It was introduced to introduce duck type system into DocScript. Like `interface` in Java or `trait` in Rust, trait in DocScript is a bound or a restriction to describe a type with given values.
 
 ### Declaration
 
@@ -164,7 +164,7 @@ const lib = Library(Essay("title", "", "Author"))
 
 ## Type System
 
-Until this point, we have learned about defining struct as concrete types to store our data and defining traits as abstractions of all kind of types. However, we have not yet discussed about the type system in DocScript, and here we are.
+Until this point, we have learned about defining struct as concrete types to store our data and defining traits as abstractions of all kind of types. However, we have not yet discussed the type system in DocScript, and here we are.
 
 ### Goal
 

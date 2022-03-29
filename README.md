@@ -10,13 +10,13 @@ The purpose of this DSL is to enable quick documentation in the style of program
 
 This language will provide multiple predefined layout elements that can be used like classes. Using these elements, documentation layouts can be easily created, modified, and removed.
 
-This language will also provide straightforward abstractions for content data, such as text, images, and fonts. With that, users can produce a documentations with multi-media with no extra efforts. 
+This language will also provide straightforward abstractions for content data, such as text, images, and fonts. With that, users can produce a documentations with multimedia with no extra efforts. 
 
 ## Language Specification
 
 As a DSL focusing on generating documents, the language is designed to be simple but powerful.
 
-DocScript supports a folder based module system and highly abstractable trait system. Its type system is simple but strict to guarantee the correctness of content. Users can define constant, struct, and trait based on their needs, and they will all be compiled statically.
+DocScript supports a folder based module system and highly abstract-able trait system. Its type system is simple but strict to guarantee the correctness of content. Users can define constant, struct, and trait based on their needs, and they will all be compiled statically.
 
 A full language specification documentation will be provided ...
 
