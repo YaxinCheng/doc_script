@@ -15,18 +15,18 @@ mod tokenizer;
 
 const OUTPUT_FILE: &str = "a.dc";
 
-pub fn compile(source_file_names: Vec<String>) {
+pub fn compile<P: AsRef<Path>>(source_file_names: &[P]) {
     compile_to(source_file_names, |env| {
         code_generation::generate_code(env, OUTPUT_FILE)
     })
 }
 
-fn compile_to<O, F: FnOnce(&env::Environment) -> O>(
-    source_file_names: Vec<String>,
+fn compile_to<O, P: AsRef<Path>, F: FnOnce(&env::Environment) -> O>(
+    source_file_names: &[P],
     output_fn: F,
 ) -> O {
     let file_content = source_file_names.iter().map(read_file).collect::<Vec<_>>();
-    let mut compiled_syntax_trees = stdlib::content()
+    let mut compiled_syntax_trees = stdlib::CONTENT
         .into_iter()
         .chain(file_content.iter().map(|content| content.as_ref()))
         .map(tokenizer::tokenize)
@@ -35,11 +35,11 @@ fn compile_to<O, F: FnOnce(&env::Environment) -> O>(
         .collect::<Vec<_>>();
     let environment = env::Environment::builder()
         .add_modules_from_paths(
-            stdlib::paths().into_iter().chain(
+            stdlib::PATHS.into_iter().map(Path::new).chain(
                 source_file_names
                     .iter()
-                    .map(String::as_str)
-                    .inspect(prohibit_std_injection),
+                    .inspect(prohibit_std_injection)
+                    .map(AsRef::as_ref),
             ),
         )
         .generate_scopes(&mut compiled_syntax_trees)

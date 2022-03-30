@@ -1,3 +1,4 @@
+#![cfg(test)]
 use lazy_static::lazy_static;
 
 mod formula_suppress;

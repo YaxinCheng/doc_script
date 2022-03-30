@@ -68,7 +68,7 @@ fn compile_single_file(content: &str) -> Result<Vec<u8>> {
     let _locked = COMPILER_LOCK.lock().expect("Failed to lock");
     std::env::set_current_dir(&project_dir)?;
     let compiled = compile_to(
-        vec!["main.ds".to_string()],
+        &["main.ds"],
         crate::code_generation::generate_code_to_buffer,
     );
     Ok(compiled)

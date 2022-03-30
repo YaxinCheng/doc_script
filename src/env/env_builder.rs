@@ -2,6 +2,7 @@ use super::construction;
 use super::{declaration_resolution, name_resolution, Environment};
 use crate::ast::AbstractSyntaxTree;
 use crate::env::checks;
+use std::path::Path;
 
 const CONSTRUCTED: usize = 0;
 const MODULE_ADDED: usize = 1;
@@ -35,7 +36,7 @@ impl<'ast, 'a> EnvironmentBuilder<'ast, 'a, CONSTRUCTED> {
     /// modules `models` and `models.tree`
     pub fn add_modules_from_paths(
         mut self,
-        paths: impl Iterator<Item = &'a str>,
+        paths: impl Iterator<Item = &'a Path>,
     ) -> EnvironmentBuilder<'ast, 'a, MODULE_ADDED> {
         let module_paths = paths.map(Self::convert_to_module);
         self.module_paths.extend(module_paths);
@@ -53,11 +54,17 @@ impl<'ast, 'a> EnvironmentBuilder<'ast, 'a, CONSTRUCTED> {
         self.migrate()
     }
 
-    fn convert_to_module(file_name: &str) -> Vec<&str> {
-        match file_name.rsplit_once(std::path::MAIN_SEPARATOR) {
-            Some((path, _)) => path.split(std::path::MAIN_SEPARATOR).collect(),
-            None => vec![],
-        }
+    fn convert_to_module(file_path: &Path) -> Vec<&str> {
+        file_path
+            .parent()
+            .unwrap_or(file_path)
+            .components()
+            .map(|component| component.as_os_str())
+            .map(|name| {
+                name.to_str()
+                    .unwrap_or_else(|| panic!("name `{name:?}` is not UTF-8"))
+            })
+            .collect::<Vec<_>>()
     }
 }
 

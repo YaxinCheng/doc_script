@@ -1,8 +1,9 @@
 use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::env;
+use std::ffi::OsStr;
 use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Error, ErrorKind, Read, Result, Write};
+use std::io::{BufRead, BufReader, BufWriter, Error, ErrorKind, Result, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str::FromStr;
@@ -14,10 +15,10 @@ const NODE_KIND_HEADER: &[u8] =
     b"#[derive(Clone, Copy, Debug, PartialEq, Eq)]\npub enum NodeKind {\n";
 
 const RULE_FILE_NAME: &str = "rules.rs";
-const RULE_FILE_HEADER: &[u8] = b"pub const RULES: &[Production] = &[\n";
+const RULE_FILE_HEADER: &[u8] = b"pub const RULES: [Production; N] = [\n";
 
 const SYMBOL_MAP_FILE_NAME: &str = "symbols.rs";
-const SYMBOL_MAP_FILE_HEADER: &[u8] = b"pub fn symbol_to_ord(symbol: Symbol) -> usize {
+const SYMBOL_MAP_FILE_HEADER: &[u8] = b"pub fn symbol_to_ord(symbol: &Symbol) -> usize {
 match symbol {
 ";
 
@@ -26,16 +27,11 @@ const ACTION_TABLE_FILE_NAME: &str = "action_table.rs";
 const CONVERTER_PATH: &str = "jlalr/Jlalr1.java";
 const LR1_CONVERTER: &str = "jlalr.Jlr1";
 const PROJECT_PATH: &str = env!("CARGO_MANIFEST_DIR");
-const GRAMMAR_FILES: &[&str] = &[
-    concat!(env!("CARGO_MANIFEST_DIR"), "/grammar/terminals.cfg"),
-    concat!(env!("CARGO_MANIFEST_DIR"), "/grammar/nonterminals.cfg"),
-    concat!(env!("CARGO_MANIFEST_DIR"), "/grammar/start_symbol.cfg"),
-    concat!(env!("CARGO_MANIFEST_DIR"), "/grammar/rules.cfg"),
-]; // the order should be preserved to generate correct grammar file
+const GRAMMAR_RULE_FILE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/grammar.cfg");
 
 const STDLIB_FILE_NAME: &str = "stdlib.rs";
-const STDLIB_PATH_NAME: &str = "stdlib_path.rs";
-const STDLIB_COUNT_NAME: &str = "stdlib_count.rs";
+const STD_CONTENT_HEADER: &[u8] = b"pub(crate) const CONTENT: [&str; N] = [\n";
+const STD_PATH_HEADER: &[u8] = b"pub(crate) const PATHS: [&str; N] = [\n";
 
 fn main() -> Result<()> {
     let output_dir: PathBuf = std::env::var("OUT_DIR")
@@ -44,14 +40,13 @@ fn main() -> Result<()> {
     compile_converter()?;
     generate_lr1_table(&output_dir)?;
     process_lr1_grammar(&output_dir)?;
-    generate_stdlib_files(&output_dir)?;
-    for path in GRAMMAR_FILES {
-        println!("cargo:rerun-if-changed={}", path);
-    }
-    println!(
-        "cargo:rerun-if-changed={}",
-        concat!(env!("CARGO_MANIFEST_DIR"), "/std")
-    );
+    generate_stdlib_bridge(&output_dir)?;
+    println!("cargo:rerun-if-changed={GRAMMAR_RULE_FILE}");
+    println!(concat!(
+        "cargo:rerun-if-changed=",
+        env!("CARGO_MANIFEST_DIR"),
+        "/std"
+    ));
     Ok(())
 }
 
@@ -79,23 +74,72 @@ fn generate_lr1_table(output_dir: &Path) -> Result<()> {
 }
 
 fn write_grammar_files(target: impl Write) -> Result<()> {
-    let mut writer = BufWriter::new(target);
-    let mut buffer = String::new();
-    let mut write_fn = |path: &str, with_line_count: bool| -> Result<()> {
-        let mut file = File::open(path)?;
-        file.read_to_string(&mut buffer)?;
-        let content = buffer.trim();
-        if with_line_count {
-            writeln!(writer, "{}", content.split('\n').count())?;
+    fn write<I: IntoIterator<Item = String>>(
+        output: &mut BufWriter<impl Write>,
+        line_count: Option<usize>,
+        content: I,
+    ) -> Result<()> {
+        if let Some(line_count) = line_count {
+            writeln!(output, "{line_count}")?;
         }
-        writeln!(writer, "{}", content)?;
-        buffer.clear();
-        Ok(())
-    };
-    write_fn(GRAMMAR_FILES[0], true)?;
-    write_fn(GRAMMAR_FILES[1], true)?;
-    write_fn(GRAMMAR_FILES[2], false)?;
-    write_fn(GRAMMAR_FILES[3], true)
+        content
+            .into_iter()
+            .try_for_each(|line| writeln!(output, "{}", line.trim()))
+    }
+
+    let mut writer = BufWriter::new(target);
+    let GrammarFile {
+        root,
+        terminals,
+        non_terminals,
+        rules,
+    } = parse_grammar_file()?;
+    write(&mut writer, Some(terminals.len()), terminals)?;
+    write(&mut writer, Some(non_terminals.len()), non_terminals)?;
+    write(&mut writer, None, std::iter::once(root))?;
+    write(&mut writer, Some(rules.len()), rules)
+}
+
+struct GrammarFile {
+    root: String,
+    terminals: Vec<String>,
+    non_terminals: HashSet<String>,
+    rules: Vec<String>,
+}
+
+fn parse_grammar_file() -> Result<GrammarFile> {
+    let reader = BufReader::new(File::open(GRAMMAR_RULE_FILE)?);
+    let mut non_terminals = HashSet::new();
+    let mut terminals = HashSet::new();
+    let mut root: Option<String> = None;
+    let mut rules = Vec::new();
+    for line in reader.lines() {
+        let line = line?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        for (index, token) in line.trim().split(' ').enumerate() {
+            if index == 0 && !non_terminals.contains(token) {
+                non_terminals.insert(String::from(token));
+                if root.is_none() {
+                    root.replace(String::from(token));
+                }
+            } else if index > 0 && !non_terminals.contains(token) {
+                terminals.insert(String::from(token));
+            }
+        }
+        rules.push(line);
+    }
+    let terminals = terminals
+        .into_iter()
+        .filter(|token| !non_terminals.contains(token))
+        .collect();
+    Ok(GrammarFile {
+        root: root.expect("Root not found"),
+        terminals,
+        non_terminals,
+        rules,
+    })
 }
 
 macro_rules! unexpected_eof {
@@ -161,7 +205,7 @@ fn process_lr1_grammar(output_dir: &Path) -> Result<()> {
         .enumerate()
         .map(|(index, symbol)| (symbol, index))
         .collect::<HashMap<_, _>>();
-    generate_rules(lines.take(num_of_rules), output_dir)?;
+    generate_rules(lines.take(num_of_rules), num_of_rules, output_dir)?;
     let num_of_states = lines.next()?;
     let num_of_actions = lines.next()?;
     generate_actions(
@@ -184,9 +228,11 @@ fn generate_node_kind<'a>(
 
 fn generate_rules(
     mut rules: impl Iterator<Item = Result<String>>,
+    size: usize,
     output_dir: &Path,
 ) -> Result<()> {
     let mut writer = BufWriter::new(File::create(output_dir.join(RULE_FILE_NAME))?);
+    writeln!(writer, "const N: usize = {size};")?;
     writer.write_all(RULE_FILE_HEADER)?;
     rules.try_for_each(|line| -> Result<()> {
         let line = line?;
@@ -204,17 +250,16 @@ fn write_production_rules<'a>(
     lhs: &str,
     mut rhs: impl Iterator<Item = &'a str>,
 ) -> Result<()> {
-    write!(writer, "Production {{ lhs: NodeKind::{}, rhs: &[", lhs)?;
+    write!(writer, "Production {{ lhs: NodeKind::{lhs}, rhs: &[")?;
 
     rhs.try_for_each(|symbol| {
         if let Some(token_kind) = terminals_to_token_kind(symbol) {
             write!(
                 writer,
-                r#"Symbol::Terminal(Token {{ kind: {}, lexeme: "{}" }}), "#,
-                token_kind, symbol
+                r#"Symbol::Terminal(Token {{ kind: {token_kind}, lexeme: "{symbol}" }}), "#,
             )
         } else {
-            write!(writer, "Symbol::NonTerminal(NodeKind::{}), ", symbol)
+            write!(writer, "Symbol::NonTerminal(NodeKind::{symbol}), ")
         }
     })?;
     writeln!(writer, "] }},")
@@ -252,27 +297,24 @@ fn generate_symbol_map(
             if should_ignore_lexeme(symbol) {
                 writeln!(
                     writer,
-                    "Symbol::Terminal(Token {{ kind: TokenKind::{}, lexeme: _ }}) => {},",
-                    token_kind, index
+                    "Symbol::Terminal(Token {{ kind: TokenKind::{token_kind}, lexeme: _ }}) => {index},",
                 )?
             } else {
                 writeln!(
                     writer,
-                    r#"Symbol::Terminal(Token {{ kind: TokenKind::{}, lexeme: "{}" }}) => {},"#,
-                    token_kind, symbol, index
+                    r#"Symbol::Terminal(Token {{ kind: TokenKind::{token_kind}, lexeme: "{symbol}" }}) => {index},"#,
                 )?
             }
         } else {
             writeln!(
                 writer,
-                "Symbol::NonTerminal(NodeKind::{}) => {},",
-                symbol, index
+                "Symbol::NonTerminal(NodeKind::{symbol}) => {index},",
             )?
         }
     }
     writeln!(
         writer,
-        r#"sym => panic!("Unexpected symbol: {{:?}}", sym)
+        r#"sym => panic!("Unexpected symbol: {{sym:?}}")
 }}}}"#
     )
 }
@@ -286,7 +328,7 @@ impl From<&str> for ActionKind {
         match kind {
             "reduce" => ActionKind::Reduce,
             "shift" => ActionKind::Transition,
-            unknown => panic!("Invalid action kind: {}", unknown),
+            unknown => panic!("Invalid action kind: {unknown}"),
         }
     }
 }
@@ -393,29 +435,25 @@ fn should_ignore_lexeme(symbol: &str) -> bool {
     )
 }
 
-fn generate_stdlib_files(output_dir: &Path) -> Result<()> {
+fn generate_stdlib_bridge(output_dir: &Path) -> Result<()> {
+    let entries = WalkDir::new("std")
+        .follow_links(false)
+        .into_iter()
+        .filter_map(|entry| entry.ok())
+        .filter(|entry| matches!(entry.path().extension().and_then(OsStr::to_str), Some("ds")))
+        .collect::<Vec<_>>();
+    let mut paths = entries.iter().map(|entry| entry.path().display());
+
     let mut std_file_writer = BufWriter::new(File::create(output_dir.join(STDLIB_FILE_NAME))?);
-    let mut std_path_writer = BufWriter::new(File::create(output_dir.join(STDLIB_PATH_NAME))?);
-    std_file_writer.write_all(b"[\n")?;
-    std_path_writer.write_all(b"[\n")?;
-    let mut counter = 0_usize;
-    for entry in WalkDir::new("std").follow_links(false).into_iter() {
-        let entry = entry?;
-        if entry
-            .file_name()
-            .to_str()
-            .map(|file_name| file_name.starts_with('.') || !file_name.ends_with(".ds"))
-            .unwrap_or_default()
-        {
-            continue;
-        }
-        let path = entry.path().display();
-        counter += 1;
-        writeln!(std_file_writer, r#"include_str!("{PROJECT_PATH}/{path}"),"#)?;
-        writeln!(std_path_writer, r#""{path}","#)?;
-    }
-    std_file_writer.write_all(b"]\n")?;
-    std_path_writer.write_all(b"]\n")?;
-    let mut std_count_writer = BufWriter::new(File::create(output_dir.join(STDLIB_COUNT_NAME))?);
-    writeln!(std_count_writer, "{counter}")
+    writeln!(std_file_writer, "const N: usize = {};", entries.len())?;
+
+    std_file_writer.write_all(STD_CONTENT_HEADER)?;
+    paths.clone().try_for_each(|path| {
+        writeln!(std_file_writer, r#"include_str!("{PROJECT_PATH}/{path}"),"#)
+    })?;
+    std_file_writer.write_all(b"];\n")?;
+
+    std_file_writer.write_all(STD_PATH_HEADER)?;
+    paths.try_for_each(|path| writeln!(std_file_writer, r#""{path}","#))?;
+    std_file_writer.write_all(b"];\n")
 }

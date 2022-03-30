@@ -17,7 +17,7 @@ include!(concat!(env!("OUT_DIR"), "/action_table.rs"));
 include!(concat!(env!("OUT_DIR"), "/symbols.rs"));
 
 pub fn transit(state: State, symbol: Symbol) -> Option<State> {
-    let symbol_index: usize = symbol_to_ord(symbol);
+    let symbol_index: usize = symbol_to_ord(&symbol);
     let transitions: &[(usize, usize)] = TRANSITIONS[state];
     let index = transitions
         .binary_search_by_key(&symbol_index, |(symbol, _)| *symbol)
@@ -26,7 +26,7 @@ pub fn transit(state: State, symbol: Symbol) -> Option<State> {
 }
 
 pub fn reduce(state: State, terminal: Token) -> Option<Production> {
-    let symbol_index: usize = symbol_to_ord(Symbol::Terminal(terminal));
+    let symbol_index: usize = symbol_to_ord(&Symbol::Terminal(terminal));
     let reductions: &[(usize, usize)] = REDUCTIONS[state];
     let index = reductions
         .binary_search_by_key(&symbol_index, |(symbol, _)| *symbol)
