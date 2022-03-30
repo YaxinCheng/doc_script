@@ -2,6 +2,6 @@ use doc_script::compile;
 
 fn main() {
     let args = std::env::args();
-    let arguments = args.skip(1).collect();
-    compile(arguments);
+    let arguments = args.skip(1).collect::<Vec<_>>();
+    compile(&arguments);
 }
