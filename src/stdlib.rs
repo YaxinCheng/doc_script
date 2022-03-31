@@ -18,11 +18,13 @@ pub fn compiled_content<'a>() -> [crate::ast::AbstractSyntaxTree<'a>; N] {
 
 #[cfg(test)]
 pub fn module_paths() -> [Vec<&'static str>; N] {
-    paths()
-        .map(|path| {
-            path.rsplit_once(std::path::MAIN_SEPARATOR)
-                .unwrap_or(("", ""))
-                .0
-        })
-        .map(|path| path.split(std::path::MAIN_SEPARATOR).collect())
+    paths().map(std::path::Path::new).map(|path| {
+        let mut components = path
+            .components()
+            .map(|component| component.as_os_str())
+            .map(|name| name.to_str().expect("Not Utf-8"))
+            .collect::<Vec<_>>();
+        components.pop();
+        components
+    })
 }

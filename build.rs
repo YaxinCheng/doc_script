@@ -1,8 +1,8 @@
 use std::cmp::Reverse;
-use std::collections::{BinaryHeap, HashMap};
+use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::env;
 use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Error, ErrorKind, Read, Result, Write};
+use std::io::{BufRead, BufReader, BufWriter, Error, ErrorKind, Result, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::str::FromStr;
@@ -26,12 +26,7 @@ const ACTION_TABLE_FILE_NAME: &str = "action_table.rs";
 const CONVERTER_PATH: &str = "jlalr/Jlalr1.java";
 const LR1_CONVERTER: &str = "jlalr.Jlr1";
 const PROJECT_PATH: &str = env!("CARGO_MANIFEST_DIR");
-const GRAMMAR_FILES: &[&str] = &[
-    concat!(env!("CARGO_MANIFEST_DIR"), "/grammar/terminals.cfg"),
-    concat!(env!("CARGO_MANIFEST_DIR"), "/grammar/nonterminals.cfg"),
-    concat!(env!("CARGO_MANIFEST_DIR"), "/grammar/start_symbol.cfg"),
-    concat!(env!("CARGO_MANIFEST_DIR"), "/grammar/rules.cfg"),
-]; // the order should be preserved to generate correct grammar file
+const GRAMMAR_RULE_FILE: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/grammar.cfg");
 
 const STDLIB_FILE_NAME: &str = "stdlib.rs";
 const STDLIB_PATH_NAME: &str = "stdlib_path.rs";
@@ -45,13 +40,12 @@ fn main() -> Result<()> {
     generate_lr1_table(&output_dir)?;
     process_lr1_grammar(&output_dir)?;
     generate_stdlib_files(&output_dir)?;
-    for path in GRAMMAR_FILES {
-        println!("cargo:rerun-if-changed={}", path);
-    }
-    println!(
-        "cargo:rerun-if-changed={}",
-        concat!(env!("CARGO_MANIFEST_DIR"), "/std")
-    );
+    println!("cargo:rerun-if-changed={}", GRAMMAR_RULE_FILE);
+    println!(concat!(
+        "cargo:rerun-if-changed=",
+        env!("CARGO_MANIFEST_DIR"),
+        "/std"
+    ));
     Ok(())
 }
 
@@ -80,22 +74,76 @@ fn generate_lr1_table(output_dir: &Path) -> Result<()> {
 
 fn write_grammar_files(target: impl Write) -> Result<()> {
     let mut writer = BufWriter::new(target);
-    let mut buffer = String::new();
-    let mut write_fn = |path: &str, with_line_count: bool| -> Result<()> {
-        let mut file = File::open(path)?;
-        file.read_to_string(&mut buffer)?;
-        let content = buffer.trim();
-        if with_line_count {
-            writeln!(writer, "{}", content.split('\n').count())?;
+    let grammar_file = parse_grammar_file()?;
+    fn write<I: IntoIterator<Item = String>>(
+        output: &mut BufWriter<impl Write>,
+        line_count: Option<usize>,
+        content: I,
+    ) -> Result<()> {
+        if let Some(line_count) = line_count {
+            writeln!(output, "{line_count}")?;
         }
-        writeln!(writer, "{}", content)?;
-        buffer.clear();
-        Ok(())
-    };
-    write_fn(GRAMMAR_FILES[0], true)?;
-    write_fn(GRAMMAR_FILES[1], true)?;
-    write_fn(GRAMMAR_FILES[2], false)?;
-    write_fn(GRAMMAR_FILES[3], true)
+        content
+            .into_iter()
+            .try_for_each(|line| writeln!(output, "{line}"))
+    }
+    write(
+        &mut writer,
+        Some(grammar_file.terminals.len()),
+        grammar_file.terminals,
+    )?;
+    write(
+        &mut writer,
+        Some(grammar_file.non_terminals.len()),
+        grammar_file.non_terminals,
+    )?;
+    write(&mut writer, None, std::iter::once(grammar_file.root))?;
+    write(
+        &mut writer,
+        Some(grammar_file.rules.len()),
+        grammar_file.rules,
+    )
+}
+
+struct GrammarFile {
+    root: String,
+    terminals: HashSet<String>,
+    non_terminals: HashSet<String>,
+    rules: Vec<String>,
+}
+
+fn parse_grammar_file() -> Result<GrammarFile> {
+    let reader = BufReader::new(File::open(GRAMMAR_RULE_FILE)?);
+    let mut non_terminals = HashSet::new();
+    let mut terminals = HashSet::new();
+    let mut root: Option<String> = None;
+    let mut rules = Vec::new();
+    for (line_number, line) in reader.lines().enumerate() {
+        let line = line?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        for (index, token) in (&line).split(' ').enumerate() {
+            if index == 0 && !non_terminals.contains(token) {
+                non_terminals.insert(String::from(token));
+                if index == 0 && line_number == 0 {
+                    root.replace(String::from(token));
+                }
+            } else if index > 0 && !non_terminals.contains(token) {
+                terminals.insert(String::from(token));
+            }
+        }
+        rules.push(line);
+    }
+    for non_terminal in &non_terminals {
+        terminals.remove(non_terminal);
+    }
+    Ok(GrammarFile {
+        root: root.expect("Root not found"),
+        terminals,
+        non_terminals,
+        rules,
+    })
 }
 
 macro_rules! unexpected_eof {
