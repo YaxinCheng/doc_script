@@ -11,11 +11,6 @@ pub fn render<'ast, 'a>(environment: &Environment<'ast, 'a>) -> Types<'ast, 'a> 
         .expect("Render cannot be found")
 }
 
-pub fn is_render<'ast, 'a>(environment: &Environment<'ast, 'a>, target: &TraitDeclaration) -> bool {
-    let render_trait = essential_trait(environment, "Render").expect("Render cannot be found");
-    std::ptr::eq(render_trait, target)
-}
-
 fn essential_trait<'ast, 'a>(
     environment: &Environment<'ast, 'a>,
     name: &'static str,
