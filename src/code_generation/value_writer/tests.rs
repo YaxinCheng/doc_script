@@ -117,7 +117,7 @@ fn test_instance_render_element_with_default_fields() {
     ]
     .into_iter()
     .collect();
-    let expected = r#"Tag: {size: 42,font: "Code",}"#;
+    let expected = r#"Tag: {font: "Code",size: 42,}"#;
     test_instance_to_value(structure, fields, expected)
 }
 

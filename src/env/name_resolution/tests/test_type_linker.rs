@@ -2,8 +2,8 @@ use crate::ast::{abstract_tree, Name};
 use crate::env::name_resolution::TypeLinker;
 use crate::env::scope::{ScopeId, Scoped, GLOBAL_SCOPE};
 use crate::env::{declaration_resolution, Environment};
+use crate::formula_suppress::FormulaSuppress;
 use crate::parser::parse;
-use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 
 #[test]

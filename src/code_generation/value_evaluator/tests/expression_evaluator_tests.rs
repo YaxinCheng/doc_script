@@ -3,8 +3,8 @@ use super::super::value::Value;
 use super::get_constant;
 use crate::ast::abstract_tree;
 use crate::env::Environment;
+use crate::formula_suppress::FormulaSuppress;
 use crate::parser::parse;
-use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 
 #[test]

@@ -1,0 +1,4 @@
+// size struct in points
+struct Size(width: Int, height: Int)
+
+const A4 = Size(595, 842)

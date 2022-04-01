@@ -1,3 +1,4 @@
+#![cfg(test)]
 /// FormulaSuppress used in tests to suppress one or many of following processes:
 ///     * preluding std library into GLOBAL scope (some tests do not test std)
 ///     * entry constant check
@@ -9,7 +10,6 @@
 ///
 /// # Warning:
 /// changed environment will be unset when the object is dropped
-#[cfg(test)]
 #[derive(Default)]
 pub struct FormulaSuppress {
     prelude_std_enabled: bool, // true to enable, false to suppress

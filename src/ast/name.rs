@@ -28,9 +28,9 @@ impl<'a> Name<'a> {
         }
     }
 
-    pub fn qualified(names: Vec<&'a str>) -> Self {
+    pub fn qualified<B: Into<Box<[&'a str]>>>(names: B) -> Self {
         Name {
-            moniker: Moniker::Qualified(names.into_boxed_slice()),
+            moniker: Moniker::Qualified(names.into()),
             scope: None,
         }
     }

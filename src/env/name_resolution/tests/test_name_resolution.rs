@@ -1,8 +1,8 @@
 use crate::ast::{abstract_tree, ConstantDeclaration, Name, StructDeclaration};
 use crate::env::scope::{Scoped, GLOBAL_SCOPE};
 use crate::env::Environment;
+use crate::formula_suppress::FormulaSuppress;
 use crate::parser::parse;
-use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 
 macro_rules! try_block {
@@ -22,7 +22,7 @@ fn resolve_module_constant() {
         abstract_tree(parse(tokenize("const target = 3\n"))),
     ];
     let module_paths = vec![vec![], vec!["test"]];
-    let mut name = Name::qualified(vec!["test", "target"]);
+    let mut name = Name::qualified(["test", "target"]);
     name.set_scope(GLOBAL_SCOPE);
     let resolved = Environment::builder()
         .add_modules(&module_paths)
@@ -56,7 +56,7 @@ fn resolve_module_struct() {
         abstract_tree(parse(tokenize("struct Empty\n"))),
     ];
     let module_paths = vec![vec![], vec!["empty"]];
-    let mut target_name = Name::qualified(vec!["empty", "Empty"]);
+    let mut target_name = Name::qualified(["empty", "Empty"]);
     target_name.set_scope(GLOBAL_SCOPE);
     let resolved_names = Environment::builder()
         .add_modules(&module_paths)

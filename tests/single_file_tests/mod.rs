@@ -1,11 +1,11 @@
 use super::COMPILER_LOCK;
-use crate::compile_to;
+use doc_script::compile;
 use std::io::Result;
 use tempdir::TempDir;
 
 #[test]
 fn test_doc_build_empty_single_file() -> Result<()> {
-    let compiled = compile_single_file(r#"const Main = Doc { }"#)?;
+    let compiled = compile_single_file(r#"const Main = Page { }"#)?;
     let compiled_str = std::str::from_utf8(&compiled).expect("Not utf8");
     assert_eq!(compiled_str, "");
     Ok(())
@@ -13,11 +13,11 @@ fn test_doc_build_empty_single_file() -> Result<()> {
 
 #[test]
 fn test_doc_build_simple_single_file() -> Result<()> {
-    let compiled = compile_single_file(r#"const Main = Doc { Text("Hello World") }"#)?;
+    let compiled = compile_single_file(r#"const Main = Page { Text("Hello World") }"#)?;
     let compiled_str = std::str::from_utf8(&compiled).expect("Not utf8");
     assert_eq!(
         compiled_str,
-        r#"Doc: {children: [Text: {content: "Hello World",},],}"#
+        r#"Page: {children: [Text: {content: "Hello World",},],}"#
     );
     Ok(())
 }
@@ -30,13 +30,13 @@ fn test_doc_wrapped_element() -> Result<()> {
         const rendered = Text(self.text)
     }
     
-    const Main = Doc { WrappedText("Hello World") }
+    const Main = Page { WrappedText("Hello World") }
     "#,
     )?;
     let compiled_str = std::str::from_utf8(&compiled).expect("Not utf8");
     assert_eq!(
         compiled_str,
-        r#"Doc: {children: [Text: {content: "Hello World",},],}"#
+        r#"Page: {children: [Text: {content: "Hello World",},],}"#
     );
     Ok(())
 }
@@ -45,17 +45,17 @@ fn test_doc_wrapped_element() -> Result<()> {
 fn test_wrapped_container() -> Result<()> {
     let compiled = compile_single_file(
         r#"
-    struct WrappedDoc(children: [Render]) {
-        const rendered = Doc(self.children)
+    struct WrappedPage(children: [Render]) {
+        const rendered = Page(self.children)
     }
     
-    const Main = WrappedDoc { Text("Hello World") }
+    const Main = WrappedPage { Text("Hello World") }
     "#,
     )?;
     let compiled_str = std::str::from_utf8(&compiled).expect("Not utf8");
     assert_eq!(
         compiled_str,
-        r#"Doc: {children: [Text: {content: "Hello World",},],}"#
+        r#"Page: {children: [Text: {content: "Hello World",},],}"#
     );
     Ok(())
 }
@@ -67,9 +67,6 @@ fn compile_single_file(content: &str) -> Result<Vec<u8>> {
     std::fs::write(&source_file_path, content)?;
     let _locked = COMPILER_LOCK.lock().expect("Failed to lock");
     std::env::set_current_dir(&project_dir)?;
-    let compiled = compile_to(
-        &["main.ds"],
-        crate::code_generation::generate_code_to_buffer,
-    );
+    let compiled = compile(&["main.ds"]);
     Ok(compiled)
 }

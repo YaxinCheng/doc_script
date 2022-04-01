@@ -1,8 +1,8 @@
 use crate::ast::{abstract_tree, AbstractSyntaxTree};
 use crate::env::Environment;
+use crate::formula_suppress::FormulaSuppress;
 use crate::parser::parse;
 use crate::stdlib;
-use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 
 fn get_syntax_trees<const N: usize>(source: [&'static str; N]) -> Vec<AbstractSyntaxTree<'static>> {

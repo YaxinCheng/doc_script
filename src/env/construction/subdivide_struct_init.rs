@@ -54,7 +54,7 @@ fn split_name<'a>(name: &Name<'a>) -> (Name<'a>, &'a str) {
     let (field_name, prefix) = name.moniker.as_slice().split_last().unwrap();
     let prefix_name = match prefix {
         [name] => Name::simple(name),
-        prefix => Name::qualified(prefix.to_owned()),
+        prefix => Name::qualified(prefix),
     };
     (prefix_name, field_name)
 }

@@ -7,8 +7,8 @@ use crate::ast::{
 use crate::code_generation::value::{Instance, Struct};
 use crate::code_generation::value_evaluator::value::Value;
 use crate::env::Environment;
+use crate::formula_suppress::FormulaSuppress;
 use crate::parser::parse;
-use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 use std::borrow::Cow;
 use std::rc::Rc;

@@ -207,15 +207,17 @@ impl<'ast, 'a, 'env> TypeChecker<'ast, 'a, 'env> {
         struct_type
     }
 
-    fn check_can_have_init_content(&mut self, field_type: Option<&Types>) -> Result<()> {
+    fn check_can_have_init_content(&mut self, field_type: Option<&Types<'ast, 'a>>) -> Result<()> {
         match field_type {
-            Some(Types::TraitCollection(r#trait))
-                if essential_trait::is_render(self.environment, *r#trait) =>
-            {
+            Some(declared_type @ (Types::StructCollection(_) | Types::TraitCollection(_))) => {
+                let render_trait = essential_trait::render(self.environment);
+                if !AssignableChecker(self).check(&(*declared_type).element_type(), &render_trait) {
+                    return Err(Error::LastFieldIsNotRender);
+                }
                 Ok(())
             }
-            None => Err(Error::NotExpectingChildren),
-            _ => Err(Error::LastFieldIsNotChildren),
+            None => Err(Error::NotExpectingInit),
+            _ => Err(Error::LastFieldIsNotRender),
         }
     }
 

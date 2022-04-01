@@ -57,7 +57,8 @@ impl<'ast, 'a> Instance<'ast, 'a> {
         self: &Rc<Self>,
         expression_resolver: &mut ExpressionEvaluator<'ast, 'a, 'env>,
     ) -> Vec<(&'a str, Value<'ast, 'a>)> {
-        self.structure
+        let attributes = self
+            .structure
             .attributes
             .iter()
             .map(|(name, attr)| {
@@ -66,7 +67,14 @@ impl<'ast, 'a> Instance<'ast, 'a> {
                     expression_resolver.evaluate(attr, Some(Value::Instance(Rc::clone(self)))),
                 )
             })
-            .collect()
+            .collect::<Vec<_>>();
+        #[cfg(test)]
+        let attributes = {
+            let mut attributes = attributes;
+            attributes.sort_by_key(|(name, _)| *name);
+            attributes
+        };
+        attributes
     }
 
     pub fn fields(self: &Rc<Self>) -> Vec<(&'a str, Value<'ast, 'a>)> {
@@ -83,6 +91,8 @@ impl<'ast, 'a> Instance<'ast, 'a> {
             }
             output.push((*field_name, value.clone()))
         }
+        #[cfg(test)]
+        output.sort_by_key(|(name, _)| *name);
         output
     }
 }

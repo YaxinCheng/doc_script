@@ -58,7 +58,7 @@ const main = View {
                                                 parameters: vec![Parameter::Labelled {
                                                     label: "source",
                                                     content: Expression::ConstUse(Name::qualified(
-                                                        vec!["canada", "lake"]
+                                                        ["canada", "lake"]
                                                     ))
                                                 }],
                                                 init_content: None

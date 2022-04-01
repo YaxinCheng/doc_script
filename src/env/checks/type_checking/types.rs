@@ -104,15 +104,20 @@ impl<'ast, 'a> Display for Types<'ast, 'a> {
 // Array related
 impl<'ast, 'a> Types<'ast, 'a> {
     pub fn collection_type(self) -> Self {
-        debug_assert!(matches!(
-            self,
-            Self::Primitive(_) | Self::Struct(_) | Self::Trait(_)
-        ));
         match self {
             Self::Primitive(primitive) => Self::PrimitiveCollection(primitive),
             Self::Struct(r#struct) => Self::StructCollection(r#struct),
             Self::Trait(r#trait) => Self::TraitCollection(r#trait),
-            _ => unreachable!("Type is already collection type"),
+            _ => self,
+        }
+    }
+
+    pub fn element_type(self) -> Self {
+        match self {
+            Self::PrimitiveCollection(primitive) => Self::Primitive(primitive),
+            Self::StructCollection(r#struct) => Self::Struct(r#struct),
+            Self::TraitCollection(r#trait) => Self::Trait(r#trait),
+            _ => self,
         }
     }
 }

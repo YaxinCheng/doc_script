@@ -23,7 +23,7 @@ pub fn check<'ast, 'a>(
 ) {
     let mut type_checker = TypeChecker::with_environment(environment);
     #[cfg(test)]
-    if !crate::tests::FormulaSuppress::entry_check_suppressed() {
+    if !crate::formula_suppress::FormulaSuppress::entry_check_suppressed() {
         type_checker.entry_check();
     }
     #[cfg(not(test))]

@@ -8,7 +8,7 @@ use crate::tokenizer::tokenize;
 
 macro_rules! import {
     ($env: ident, $code: expr) => {
-        let formula = crate::tests::FormulaSuppress::all();
+        let formula = crate::formula_suppress::FormulaSuppress::all();
         formula.suppress();
 
         let module_paths = [vec![], vec!["test"], vec!["test", "nested"]];
