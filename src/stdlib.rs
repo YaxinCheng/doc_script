@@ -1,16 +1,8 @@
-const N: usize = include!(concat!(env!("OUT_DIR"), "/stdlib_count.rs"));
-
-pub const fn content() -> [&'static str; N] {
-    include!(concat!(env!("OUT_DIR"), "/stdlib.rs"))
-}
-
-pub const fn paths() -> [&'static str; N] {
-    include!(concat!(env!("OUT_DIR"), "/stdlib_path.rs"))
-}
+include!(concat!(env!("OUT_DIR"), "/stdlib.rs"));
 
 #[cfg(test)]
 pub fn compiled_content<'a>() -> [crate::ast::AbstractSyntaxTree<'a>; N] {
-    content()
+    CONTENT
         .map(crate::tokenizer::tokenize)
         .map(crate::parser::parse)
         .map(crate::ast::abstract_tree)
@@ -18,13 +10,15 @@ pub fn compiled_content<'a>() -> [crate::ast::AbstractSyntaxTree<'a>; N] {
 
 #[cfg(test)]
 pub fn module_paths() -> [Vec<&'static str>; N] {
-    paths().map(std::path::Path::new).map(|path| {
-        let mut components = path
-            .components()
-            .map(|component| component.as_os_str())
-            .map(|name| name.to_str().expect("Not Utf-8"))
-            .collect::<Vec<_>>();
-        components.pop();
-        components
-    })
+    use std::path::{Component, Path};
+    PATHS
+        .map(Path::new)
+        .map(|path| path.parent().unwrap_or(path))
+        .map(Path::components)
+        .map(|components| {
+            components
+                .map(Component::as_os_str)
+                .map(|name| name.to_str().expect("Not Utf-8"))
+                .collect()
+        })
 }

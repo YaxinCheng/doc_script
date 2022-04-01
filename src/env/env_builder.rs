@@ -55,16 +55,16 @@ impl<'ast, 'a> EnvironmentBuilder<'ast, 'a, CONSTRUCTED> {
     }
 
     fn convert_to_module(file_path: &Path) -> Vec<&str> {
-        let mut module_name = file_path
+        file_path
+            .parent()
+            .unwrap_or(file_path)
             .components()
             .map(|component| component.as_os_str())
             .map(|name| {
                 name.to_str()
                     .unwrap_or_else(|| panic!("name `{name:?}` is not UTF-8"))
             })
-            .collect::<Vec<_>>();
-        module_name.pop();
-        module_name
+            .collect::<Vec<_>>()
     }
 }
 
