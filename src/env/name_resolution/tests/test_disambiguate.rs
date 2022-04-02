@@ -34,7 +34,7 @@ fn test_constant_field() {
         abstract_tree(parse(tokenize("struct Id(digit: Int)\n"))),
     ];
     let module_paths = vec![vec![], vec!["person"], vec!["system"]];
-    let mut target_name = Name::qualified(vec!["person", "id", "digit"]);
+    let mut target_name = Name::qualified(["person", "id", "digit"]);
     target_name.set_scope(GLOBAL_SCOPE);
     let actual = *test_disambiguate!(syntax_trees, module_paths, target_name)
         .unwrap()
@@ -60,7 +60,7 @@ fn test_field_over_package() {
         abstract_tree(parse(tokenize("const test = 5\n"))),
     ];
     let module_paths = vec![vec![], vec!["test"], vec!["test", "test"]];
-    let mut target_name = Name::qualified(vec!["test", "test", "test"]);
+    let mut target_name = Name::qualified(["test", "test", "test"]);
     target_name.set_scope(GLOBAL_SCOPE);
     let actual = *test_disambiguate!(syntax_trees, module_paths, target_name)
         .unwrap()

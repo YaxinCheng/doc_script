@@ -223,21 +223,7 @@ impl<'a> Expression<'a> {
     fn const_use(node: Node<'a>) -> Expression<'a> {
         let mut children = check_unpack!(node, NodeKind::ConstantUse);
         let name = children.pop().map(Name::from).expect("Name expected");
-        if children.is_empty() {
-            Expression::ConstUse(name)
-        } else {
-            #[cfg(debug_assertions)]
-            {
-                let _dot = children.pop();
-                debug_check! { _dot, Some(Node::Leaf(Token { kind: TokenKind::Separator, lexeme: "." })) };
-                let _self = children.pop();
-                debug_check! { _self, Some(Node::Leaf(Token { kind: TokenKind::Keyword, lexeme: "self" })) };
-            }
-            let components = std::iter::once("self")
-                .chain(name.moniker.as_slice().iter().copied())
-                .collect::<Vec<_>>();
-            Expression::ConstUse(Name::qualified(components))
-        }
+        Expression::ConstUse(name)
     }
 
     fn struct_init(node: Node<'a>) -> Expression<'a> {

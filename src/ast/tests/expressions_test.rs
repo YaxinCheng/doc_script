@@ -245,7 +245,7 @@ fn test_method_invocation(statement: &str) {
 fn test_const_use_qualified() {
     let program = "const text = book.content\n";
     let expression = find_first_expression(program).expect("Expression expected");
-    let expected = Expression::ConstUse(Name::qualified(vec!["book", "content"]));
+    let expected = Expression::ConstUse(Name::qualified(["book", "content"]));
     assert_eq!(expression, expected)
 }
 
