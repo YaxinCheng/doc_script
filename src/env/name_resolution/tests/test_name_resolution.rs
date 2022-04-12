@@ -1,8 +1,8 @@
 use crate::ast::{abstract_tree, ConstantDeclaration, Name, StructDeclaration};
 use crate::env::scope::{Scoped, GLOBAL_SCOPE};
 use crate::env::Environment;
+use crate::formula_suppress::FormulaSuppress;
 use crate::parser::parse;
-use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 
 macro_rules! try_block {

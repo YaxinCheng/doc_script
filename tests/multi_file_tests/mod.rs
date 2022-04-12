@@ -1,7 +1,7 @@
 #![cfg(test)]
 
 use super::COMPILER_LOCK;
-use crate::compile_to;
+use doc_script::compile;
 use std::io::Result;
 use tempdir::TempDir;
 
@@ -31,6 +31,6 @@ fn compile_multi_files<const N: usize>(file_content: [&str; N]) -> Result<Vec<u8
     }
     let _locked = COMPILER_LOCK.lock().expect("Failed to lock");
     std::env::set_current_dir(&project_dir)?;
-    let compiled = compile_to(&file_names, crate::code_generation::generate_code_to_buffer);
+    let compiled = compile(&file_names);
     Ok(compiled)
 }

@@ -79,8 +79,8 @@ mod type_conform_checker_tests {
     use crate::env::checks::type_checking::types::Types;
     use crate::env::checks::type_checking::TypeChecker;
     use crate::env::Environment;
+    use crate::formula_suppress::FormulaSuppress;
     use crate::parser::parse;
-    use crate::tests::FormulaSuppress;
     use crate::tokenizer::tokenize;
 
     fn type_checker<'ast, 'a, 'env>(

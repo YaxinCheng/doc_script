@@ -19,24 +19,12 @@ pub struct Scope<'ast, 'a> {
 }
 
 impl<'ast, 'a> Scope<'ast, 'a> {
-    #[cfg(not(test))]
     pub fn global() -> Self {
-        use std::sync::Once;
-        static ONCE: Once = Once::new();
-        let mut scope: Option<Scope<'ast, 'a>> = None;
-        ONCE.call_once(|| {
-            scope.replace(Scope {
-                parent: ScopeId::MAX,
-                id: 0,
-                ..Default::default()
-            });
-        });
-        scope.expect("Global can only be called once")
-    }
-
-    #[cfg(test)]
-    pub fn global() -> Self {
-        Self::default()
+        Scope {
+            parent: ScopeId::MAX,
+            id: 0,
+            ..Default::default()
+        }
     }
 }
 

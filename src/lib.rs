@@ -5,26 +5,15 @@ use std::path::Path;
 mod ast;
 mod code_generation;
 mod env;
+#[cfg(test)]
+pub mod formula_suppress;
 mod iterating;
 mod parser;
 mod search;
 mod stdlib;
-#[cfg(test)]
-mod tests;
 mod tokenizer;
 
-const OUTPUT_FILE: &str = "a.dc";
-
-pub fn compile<P: AsRef<Path>>(source_file_names: &[P]) {
-    compile_to(source_file_names, |env| {
-        code_generation::generate_code(env, OUTPUT_FILE)
-    })
-}
-
-fn compile_to<O, P: AsRef<Path>, F: FnOnce(&env::Environment) -> O>(
-    source_file_names: &[P],
-    output_fn: F,
-) -> O {
+pub fn compile<P: AsRef<Path>>(source_file_names: &[P]) -> Vec<u8> {
     let file_content = source_file_names.iter().map(read_file).collect::<Vec<_>>();
     let mut compiled_syntax_trees = stdlib::CONTENT
         .into_iter()
@@ -46,7 +35,7 @@ fn compile_to<O, P: AsRef<Path>, F: FnOnce(&env::Environment) -> O>(
         .resolve_names(&compiled_syntax_trees)
         .validate(&compiled_syntax_trees)
         .build();
-    output_fn(&environment)
+    code_generation::generate_code(&environment)
 }
 
 fn read_file<P: AsRef<Path>>(path: P) -> impl AsRef<str> {

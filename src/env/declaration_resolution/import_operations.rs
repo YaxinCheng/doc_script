@@ -11,7 +11,7 @@ pub(in crate::env::declaration_resolution) struct Importer<'ast, 'a, 'env>(
 impl<'ast, 'a, 'env> Importer<'ast, 'a, 'env> {
     pub fn insert_std_lib(&mut self) -> &mut Self {
         #[cfg(test)]
-        if crate::tests::FormulaSuppress::prelude_std_suppressed() {
+        if crate::formula_suppress::FormulaSuppress::prelude_std_suppressed() {
             return self;
         }
         let std = [

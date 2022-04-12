@@ -2,8 +2,8 @@ use super::super::resolve_helper::ResolveHelper;
 use crate::ast::abstract_tree;
 use crate::env::declaration_resolution;
 use crate::env::Environment;
+use crate::formula_suppress::FormulaSuppress;
 use crate::parser::parse;
-use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 
 #[test]

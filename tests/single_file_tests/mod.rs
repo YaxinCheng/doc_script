@@ -1,5 +1,5 @@
 use super::COMPILER_LOCK;
-use crate::compile_to;
+use doc_script::compile;
 use std::io::Result;
 use tempdir::TempDir;
 
@@ -67,9 +67,6 @@ fn compile_single_file(content: &str) -> Result<Vec<u8>> {
     std::fs::write(&source_file_path, content)?;
     let _locked = COMPILER_LOCK.lock().expect("Failed to lock");
     std::env::set_current_dir(&project_dir)?;
-    let compiled = compile_to(
-        &["main.ds"],
-        crate::code_generation::generate_code_to_buffer,
-    );
+    let compiled = compile(&["main.ds"]);
     Ok(compiled)
 }

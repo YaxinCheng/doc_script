@@ -1,7 +1,7 @@
 use crate::ast::{abstract_tree, AbstractSyntaxTree, StructDeclaration};
 use crate::env::checks::{Error, StructHierarchyChecker};
+use crate::formula_suppress::FormulaSuppress;
 use crate::parser::parse;
-use crate::tests::FormulaSuppress;
 use crate::tokenizer::tokenize;
 use std::collections::HashSet;
 
