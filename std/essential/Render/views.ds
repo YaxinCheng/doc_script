@@ -1,0 +1,9 @@
+use std.rect.{ Size, A4 }
+
+// generic page view
+struct Page(children: [Render] = [])
+
+// generic doc view
+struct Doc(size: Size = A4, children: [Page] = [])
+
+struct Text(content: String)
