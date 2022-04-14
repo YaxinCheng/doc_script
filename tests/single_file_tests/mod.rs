@@ -5,7 +5,7 @@ use tempdir::TempDir;
 
 #[test]
 fn test_doc_build_empty_single_file() -> Result<()> {
-    let compiled = compile_single_file(r#"const Main = Doc { }"#)?;
+    let compiled = compile_single_file(r#"const Main = Page { }"#)?;
     let compiled_str = std::str::from_utf8(&compiled).expect("Not utf8");
     assert_eq!(compiled_str, "");
     Ok(())

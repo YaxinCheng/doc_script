@@ -12,10 +12,12 @@ fn test_separate_file_hello_world() -> Result<()> {
         r#"const Main = Doc { Text(INFO) }"#,
     ])?;
     let compiled_str = std::str::from_utf8(&compiled).expect("Not utf8");
-    assert_eq!(
+
+    assert!(matches!(
         compiled_str,
-        r#"Doc: {children: [Text: {content: "Hello World",},],}"#
-    );
+        r#"Doc: {children: [Text: {content: "Hello World",},],size: Size: {height: 842,width: 595,},}"#
+            | r#"Doc: {children: [Text: {content: "Hello World",},],size: Size: {width: 595,height: 842,},}"#
+    ));
     Ok(())
 }
 
