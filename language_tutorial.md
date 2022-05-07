@@ -286,9 +286,9 @@ const ANNE_OF_GREEN_GABLES = Publication(
 )
 
 const THE_LITTLE_PRINCE = ANNE_OF_GREEN_GABLES
-														.title("The Little Prince")
-														.publish_year(1943)
-														.author("Antoine de Saint-Exupéry")
+			    .title("The Little Prince")
+			    .publish_year(1943)
+			    .author("Antoine de Saint-Exupéry")
 ```
 
 This will copy the `ANNE_OF_GREEN_GABLES` while changing the `title` to `"The Little Prince"`, `publish_year` to `1943`, and changing `author` to `"Antoine de Saint-Exupéry"`.
